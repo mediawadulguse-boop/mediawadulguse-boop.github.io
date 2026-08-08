@@ -1,6 +1,6 @@
 {
-  "config_version": "1.15.11",
+  "config_version": "1.16.0",
   "apiUrl": "https://script.google.com/macros/s/AKfycbzhMg-UWUBjlpMtzz9ANlnUs3MLE8Jv1d9pEtZwrhr_3fmiJlLBL79WPIvNkIeI60k/exec",
-  "updated_at": "2026-08-08T18:00:00+07:00",
-  "note": "Konfigurasi pusat MEDIA WADUL GUS'E. Edit apiUrl di file ini hanya jika URL deployment Apps Script benar-benar berganti."
+  "updated_at": "2026-08-09T04:44:00+07:00",
+  "note": "Konfigurasi pusat MEDIA WADUL GUS'E v1.16.0. URL Apps Script tetap terpusat; aplikasi memakai instant shell dan sinkronisasi data berurutan di belakang layar."
 }
