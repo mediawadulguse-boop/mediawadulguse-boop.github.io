@@ -1,6 +1,5 @@
 {
-  "config_version": "1.16.1",
   "apiUrl": "https://script.google.com/macros/s/AKfycbzhMg-UWUBjlpMtzz9ANlnUs3MLE8Jv1d9pEtZwrhr_3fmiJlLBL79WPIvNkIeI60k/exec",
-  "updated_at": "2026-08-11T19:28:00+07:00",
-  "note": "Konfigurasi pusat MEDIA WADUL GUS'E v1.16.1. Kalender diprioritaskan paling awal, edit kalender local-first, dan sinkronisasi tetap berurutan di belakang layar."
+  "config_version": "1.22.9-core",
+  "updated_at": "2026-08-14T14:05:00+07:00"
 }
