@@ -2962,7 +2962,7 @@ const FootageModule = (() => {
    ANALYST HTML DOCUMENT MODULE
 ================================================================ */
 const HtmlDocumentModule = (() => {
-  const MAX_FILE_BYTES=5*1024*1024;
+  const MAX_FILE_BYTES=15*1024*1024;
   const canManage=()=>Auth.has('html.manage');
   let pendingFile=null,previewUrl='',viewState={page:1,limit:12,search:''};
   const fileSize=v=>{const n=Number(v)||0;if(!n)return '-';if(n<1024)return `${n} B`;if(n<1024*1024)return `${(n/1024).toFixed(1)} KB`;return `${(n/1024/1024).toFixed(2)} MB`};
