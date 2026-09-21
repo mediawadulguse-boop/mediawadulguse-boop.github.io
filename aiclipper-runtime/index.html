@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Clipper Runtime</title>
+<style>html,body{margin:0;background:#0d1016;color:#fff;font:14px Arial}body{padding:24px}</style>
+</head>
+<body>
+AI Clipper Runtime v1.5.0
+<script type="module">
+let pipelineFn=null;
+let loadedKey='';
+async function getPipeline(model,device){
+  const key=model+'|'+device;
+  if(pipelineFn && loadedKey===key) return pipelineFn;
+  const mod=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0');
+  mod.env.allowLocalModels=false;
+  try{
+    pipelineFn=await mod.pipeline('automatic-speech-recognition',model,{device});
+    loadedKey=key;
+    return pipelineFn;
+  }catch(err){
+    if(device==='webgpu'){
+      pipelineFn=await mod.pipeline('automatic-speech-recognition',model,{device:'wasm'});
+      loadedKey=model+'|wasm';
+      return pipelineFn;
+    }
+    throw err;
+  }
+}
+window.addEventListener('message',async e=>{
+  const d=e.data||{};
+  if(d.source!=='AI_CLIPPER_APP' || !d.requestId) return;
+  try{
+    if(d.type==='PING'){
+      e.source?.postMessage({source:'AI_CLIPPER_RUNTIME',requestId:d.requestId,ok:true,version:'1.5.0'},'*');
+      return;
+    }
+    if(d.type==='TRANSCRIBE'){
+      const audio=new Float32Array(d.audioBuffer);
+      const pipe=await getPipeline(d.model,d.device||'wasm');
+      const out=await pipe(audio,{
+        language:d.language||'indonesian',
+        task:'transcribe',
+        return_timestamps:true,
+        chunk_length_s:30,
+        stride_length_s:5
+      });
+      e.source?.postMessage({
+        source:'AI_CLIPPER_RUNTIME',
+        requestId:d.requestId,
+        ok:true,
+        result:out
+      },'*');
+      return;
+    }
+    throw new Error('Unknown runtime request');
+  }catch(err){
+    e.source?.postMessage({
+      source:'AI_CLIPPER_RUNTIME',
+      requestId:d.requestId,
+      ok:false,
+      error:String(err?.message||err)
+    },'*');
+  }
+});
+window.parent?.postMessage({source:'AI_CLIPPER_RUNTIME',type:'READY',version:'1.5.0'},'*');
+</script>
+</body>
+</html>
