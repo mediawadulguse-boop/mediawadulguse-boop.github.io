@@ -3,19 +3,1814 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Clipper YouTube Bridge</title>
+<title>AI Clipper Local v1.5.0</title>
 <style>
-html,body{margin:0;background:#0d1016;color:#fff;font:14px Arial,sans-serif}
-main{max-width:640px;margin:60px auto;padding:24px}
-code{color:#8bdcff}
+:root{
+  --bg:#0d1016;--panel:#151a23;--panel2:#1c2330;--line:#293244;
+  --text:#f5f7fb;--muted:#9ba7b8;--accent:#7c6cff;--accent2:#a89cff;
+  --good:#48d597;--warn:#ffbf69;--danger:#ff667d;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#0a0d12,#0f131b 30%,#0b0f15);color:var(--text);font:14px/1.45 Inter,Segoe UI,Arial,sans-serif}
+button,input,select{font:inherit}
+.app{max-width:1380px;margin:auto;padding:24px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.brand h1{margin:0;font-size:26px;letter-spacing:-.4px}.brand p{margin:5px 0 0;color:var(--muted)}
+.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:#111722}
+.grid{display:grid;grid-template-columns:1.08fr .92fr;gap:18px}
+.card{background:rgba(21,26,35,.94);border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.2)}
+.pad{padding:18px}
+.upload{border:1.5px dashed #3a4560;border-radius:16px;padding:28px;text-align:center;background:linear-gradient(180deg,#171d28,#121721);transition:.2s}
+.upload.drag{border-color:var(--accent);background:#191a2d}
+.upload .icon{font-size:36px}.upload h2{margin:8px 0 4px;font-size:19px}.upload p{margin:0;color:var(--muted)}
+.btn{border:0;border-radius:11px;padding:11px 14px;background:var(--panel2);color:var(--text);cursor:pointer}
+.btn:hover{filter:brightness(1.08)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#5d4df5);font-weight:700}
+.btn.good{background:#153b30;color:#b7ffe3}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+label.small{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
+select{width:100%;background:#101621;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px}
+.status{margin-top:14px;background:#0f151f;border:1px solid var(--line);border-radius:12px;padding:12px}
+.progress{height:8px;background:#222a38;border-radius:999px;overflow:hidden;margin-top:9px}
+.progress>i{display:block;width:0;height:100%;background:linear-gradient(90deg,var(--accent),#a18eff);transition:.2s}
+.filemeta{margin-top:14px;color:var(--muted);display:none}
+.filemeta b{color:var(--text)}
+video{width:100%;max-height:440px;background:#000;border-radius:14px}
+.results{margin-top:18px}
+.result{border:1px solid var(--line);border-radius:14px;padding:14px;background:#111722;margin-bottom:10px;cursor:pointer;transition:.15s}
+.result:hover,.result.active{border-color:#685bff;background:#17172a}
+.resulthead{display:flex;justify-content:space-between;gap:14px}
+.score{font-weight:800;font-size:20px}.score.hot{color:#ff8f7c}
+.time{color:var(--muted);font-size:12px}.hook{font-weight:700;margin-top:6px}
+.reason{color:var(--muted);font-size:12px;margin-top:4px}
+.meters{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.meter{background:#0b1018;border-radius:8px;padding:6px 8px;font-size:11px;color:var(--muted)}
+.meter b{color:var(--text)}
+.detail-empty{color:var(--muted);padding:24px;text-align:center}
+.transcript{max-height:210px;overflow:auto;background:#0d131c;border:1px solid var(--line);border-radius:12px;padding:12px;color:#cbd4e1}
+.exportbox{display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+.badge{font-size:11px;border-radius:999px;padding:5px 8px;background:#20283a;color:#cbd4e1}
+.log{font-size:12px;color:var(--muted);white-space:pre-wrap;max-height:120px;overflow:auto;margin-top:8px}
+.note{margin-top:14px;color:var(--muted);font-size:12px}
+.templatebox{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#0f151f}
+.templategrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.previewframe{margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#000;display:none}
+.previewframe canvas{display:block;width:100%;height:auto;max-height:520px;object-fit:contain;background:#000}
+.modebox{margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:#0f151f}
+.methodbar{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#101621}
+.methodbuttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.methodbtn{border:1px solid var(--line);background:#151b25;color:var(--text);padding:14px;border-radius:12px;cursor:pointer;text-align:left}
+.methodbtn.active{border-color:var(--accent);background:#1b1930;box-shadow:0 0 0 1px rgba(124,108,255,.2) inset}
+.methodbtn b{display:block;font-size:15px;margin-bottom:3px}
+.methodbtn span{color:var(--muted);font-size:12px}
+.manualpanel{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.manualtabs{display:flex;gap:8px;margin-bottom:12px}
+.manualtab{border:1px solid var(--line);background:#151b25;color:var(--muted);padding:9px 12px;border-radius:10px;cursor:pointer}
+.manualtab.active{background:#25203c;border-color:var(--accent);color:#fff}
+
+.modegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modegrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.textarea{width:100%;min-height:86px;background:#101621;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;resize:vertical}
+.inputx{width:100%;background:#101621;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px}
+.tiny{font-size:11px;color:var(--muted);margin-top:5px}
+.hidden{display:none}
+
+.sourcebar{margin-bottom:14px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#101621}
+.sourcebuttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sourcebtn{border:1px solid var(--line);background:#151b25;color:var(--text);padding:13px;border-radius:12px;cursor:pointer;text-align:left}
+.sourcebtn.active{border-color:var(--accent);background:#1b1930;box-shadow:0 0 0 1px rgba(124,108,255,.2) inset}
+.sourcebtn b{display:block;font-size:15px;margin-bottom:3px}
+.sourcebtn span{color:var(--muted);font-size:12px}
+.ytpanel{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.ytmeta{display:none;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0d131c}
+.ytmeta-grid{display:grid;grid-template-columns:100px 1fr;gap:12px;align-items:center}
+.ytthumb{width:100px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:#000}
+.ytmeta h3{margin:0 0 5px;font-size:14px}.ytmeta p{margin:2px 0;color:var(--muted);font-size:12px}
+.ytbatchbar{display:none;margin:10px 0;padding:10px;border:1px solid var(--line);border-radius:12px;background:#0f151f}
+.ytcheck{width:18px;height:18px;accent-color:#7c6cff;cursor:pointer}
+.batchclips{margin-top:12px}
+.batchclip{border:1px solid var(--line);border-radius:12px;padding:12px;background:#101621;margin-top:8px}
+.yt-capture-stage{display:none;position:fixed;inset:0;z-index:999999;background:#000;overflow:hidden}
+.yt-player-host{position:absolute;inset:0;background:#000}
+.yt-player-host iframe{width:100%!important;height:100%!important;border:0}
+.yt-capture-banner{position:absolute;z-index:3;left:50%;top:20px;transform:translateX(-50%);padding:12px 18px;border-radius:12px;background:rgba(0,0,0,.82);color:#fff;text-align:center;max-width:720px;border:1px solid rgba(255,255,255,.2)}
+.yt-capture-progress{position:absolute;z-index:3;left:20px;right:20px;bottom:20px;height:7px;background:rgba(255,255,255,.18);border-radius:999px;overflow:hidden}
+.yt-capture-progress i{display:block;height:100%;width:0;background:#fff}
+.yt-close{position:absolute;right:20px;top:20px;z-index:4;border:0;border-radius:999px;background:rgba(0,0,0,.8);color:#fff;width:40px;height:40px;font-size:22px;cursor:pointer}
+@media(max-width:900px){.sourcebuttons{grid-template-columns:1fr}.ytmeta-grid{grid-template-columns:1fr}.ytthumb{width:100%}}
+
+.rangeval{color:var(--muted);font-size:11px;margin-left:8px}
+@media(max-width:900px){.templategrid{grid-template-columns:1fr}}
+
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.kpi div{background:#101621;border:1px solid var(--line);padding:9px;border-radius:10px;text-align:center}
+.kpi span{display:block;color:var(--muted);font-size:10px}.kpi b{font-size:15px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.controls{grid-template-columns:1fr}.meters{grid-template-columns:1fr 1fr}.kpi{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
-<main>
-<h1>AI Clipper YouTube Bridge</h1>
-<p>Halaman bridge aktif. Halaman ini hanya meneruskan pesan antara AI Clipper lokal dan Chrome Extension.</p>
-<p>Versi: <code>1.4.7</code></p>
-<p>Status marker: <code>all_frames bridge target</code></p>
-</main>
+<div class="app">
+  <div class="top">
+    <div class="brand">
+      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.5.0</span></h1>
+      <p>Sistem sederhana • Web + Connector • File lokal + YouTube • AI viral clip</p>
+    </div>
+    <div class="row"><div class="pill">v1.5.0 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
+  </div>
+
+  <div class="grid">
+    <section>
+      <div class="card pad">
+        <div class="sourcebar">
+          <label class="small">Sumber Video</label>
+          <div class="sourcebuttons">
+            <button class="sourcebtn active" id="sourceLocalBtn" type="button">
+              <b>File Lokal</b>
+              <span>MP4 / MOV / WebM dari komputer.</span>
+            </button>
+            <button class="sourcebtn" id="sourceYoutubeBtn" type="button">
+              <b>Link YouTube</b>
+              <span>Extract transcript → AI viral → cut → edit → export.</span>
+            </button>
+          </div>
+
+          <div class="ytpanel" id="youtubeSourcePanel">
+            <label class="small">Link YouTube</label>
+            <input id="ytUrl" class="inputx" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+            <div class="row" style="margin-top:10px">
+              <button class="btn primary" id="ytFetchBtn" type="button">1. Ambil Transcript</button>
+              <button class="btn" id="ytAnalyzeBtn" type="button" disabled>2. Analisis Viral</button>
+              <button class="btn" id="ytBridgeCheckBtn" type="button">Cek Connector</button>
+              <span class="badge" id="ytBridgeStatus">Connector: memeriksa…</span>
+            </div>
+
+            <div class="ytmeta" id="ytMeta">
+              <div class="ytmeta-grid">
+                <img id="ytThumb" class="ytthumb" alt="">
+                <div>
+                  <h3 id="ytTitle">-</h3>
+                  <p id="ytChannel">-</p>
+                  <p><span id="ytDuration">-</span> • <span id="ytTranscriptInfo">-</span></p>
+                </div>
+              </div>
+            </div>
+
+            <details style="margin-top:10px">
+              <summary style="cursor:pointer;color:var(--muted)">Fallback jika video tidak memiliki caption</summary>
+              <textarea id="ytManualTranscript" class="textarea" style="margin-top:8px" placeholder="Tempel transcript SRT/VTT atau teks dengan timestamp. Contoh: 00:12 kalimat..."></textarea>
+              <button class="btn" id="ytManualTranscriptBtn" type="button" style="margin-top:8px">Gunakan Transcript Manual</button>
+            </details>
+
+            <div class="tiny" style="margin-top:10px">
+              YouTube Bridge diperlukan untuk transcript otomatis. v1.5.0 memiliki Local Bridge + Mode Web Backup. Bridge v1.5.0 terhubung otomatis tanpa izin file URL. Untuk cut video, Chrome akan meminta Anda memilih <b>tab AI Clipper ini</b> dan mengaktifkan <b>Bagikan audio tab</b>. Gunakan untuk video yang Anda miliki atau berizin digunakan.
+            </div>
+          </div>
+        </div>
+
+        <div id="localSourcePanel">
+        <div class="upload" id="drop">
+          <div class="icon">🎬</div>
+          <h2>Masukkan video</h2>
+          <p>Drag & drop atau pilih MP4/MOV/WebM dari komputer</p>
+          <div style="margin-top:14px">
+            <button class="btn primary" id="pickBtn">Pilih Video</button>
+            <input id="fileInput" type="file" accept="video/*" hidden>
+          </div>
+        </div>
+
+        <div class="filemeta" id="fileMeta"></div>
+        </div>
+
+        <div class="methodbar">
+          <label class="small">Metode Clipper</label>
+          <div class="methodbuttons">
+            <button class="methodbtn active" id="methodAI" type="button">
+              <b>1. Analisis AI</b>
+              <span>AI menganalisis seluruh video dan menampilkan kandidat clip terbaik.</span>
+            </button>
+            <button class="methodbtn" id="methodManual" type="button">
+              <b>2. Manual</b>
+              <span>Potong berdasarkan script atau waktu awal–akhir.</span>
+            </button>
+          </div>
+
+          <div class="manualpanel" id="manualPanel">
+            <div class="manualtabs">
+              <button class="manualtab active" id="manualTabScript" type="button">Berdasarkan Script</button>
+              <button class="manualtab" id="manualTabTime" type="button">Berdasarkan Waktu</button>
+            </div>
+
+            <div id="manualScriptPanel">
+              <label class="small">Masukkan script / kalimat yang ingin dijadikan clip</label>
+              <textarea id="scriptQueryTop" class="textarea" placeholder="Contoh: ternyata masalah sebenarnya bukan di anggaran..."></textarea>
+              <div class="row" style="margin-top:10px">
+                <button class="btn primary" id="manualScriptCutBtn" type="button" disabled>Potong dari Script</button>
+                <span class="badge" id="manualScriptStatus">Video belum dipilih</span>
+              </div>
+              <div class="tiny">Jika transcript belum tersedia, aplikasi akan membuat transcript lokal terlebih dahulu lalu mencari bagian yang paling sesuai.</div>
+            </div>
+
+            <div id="manualTimePanel" style="display:none">
+              <div class="modegrid">
+                <div>
+                  <label class="small">Waktu Awal</label>
+                  <div class="row" style="flex-wrap:nowrap">
+                    <div style="flex:1">
+                      <label class="tiny" for="startMinute">Menit</label>
+                      <input id="startMinute" class="inputx" type="number" min="0" step="1" value="0" inputmode="numeric">
+                    </div>
+                    <div style="flex:1">
+                      <label class="tiny" for="startSecond">Detik</label>
+                      <input id="startSecond" class="inputx" type="number" min="0" max="59" step="1" value="0" inputmode="numeric">
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="small">Waktu Akhir</label>
+                  <div class="row" style="flex-wrap:nowrap">
+                    <div style="flex:1">
+                      <label class="tiny" for="endMinute">Menit</label>
+                      <input id="endMinute" class="inputx" type="number" min="0" step="1" value="0" inputmode="numeric">
+                    </div>
+                    <div style="flex:1">
+                      <label class="tiny" for="endSecond">Detik</label>
+                      <input id="endSecond" class="inputx" type="number" min="0" max="59" step="1" value="0" inputmode="numeric">
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row" style="margin-top:10px">
+                <button class="btn primary" id="manualTimeCutBtn" type="button" disabled>Gunakan Waktu Ini</button>
+                <span class="badge" id="manualTimeStatus">00:00 → 00:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <div class="controls">
+          <div>
+            <label class="small">Model transkripsi</label>
+            <select id="model">
+              <option value="onnx-community/whisper-tiny">Whisper Tiny — paling cepat</option>
+              <option value="onnx-community/whisper-small">Whisper Small — lebih akurat</option>
+            </select>
+          </div>
+          <div>
+            <label class="small">Mode komputasi</label>
+            <select id="device">
+              <option value="auto">Auto — WebGPU jika tersedia</option>
+              <option value="wasm">CPU / WASM</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:14px" id="aiActionRow">
+          <button class="btn primary" id="analyzeBtn" disabled>Analisis AI</button>
+          <button class="btn" id="resetBtn">Reset</button>
+          <span class="badge">Bahasa Indonesia</span>
+        </div>
+        <div class="row" style="margin-top:14px;display:none" id="manualActionRow">
+          <button class="btn" id="manualResetBtn" type="button">Reset Manual</button>
+          <span class="badge">Mode Manual</span>
+        </div>
+
+        <div class="status">
+          <div class="row" style="justify-content:space-between">
+            <b id="statusText">Siap.</b>
+            <span id="pct">0%</span>
+          </div>
+          <div class="progress"><i id="bar"></i></div>
+          <div class="log" id="log"></div>
+        </div>
+
+        <div class="results">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0">Kandidat Viral</h3>
+            <span class="badge" id="count">0 kandidat</span>
+          </div>
+          <div class="ytbatchbar" id="ytBatchBar">
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <b>Batch YouTube</b>
+                <div class="tiny">Centang kandidat yang ingin diambil. Maksimal 10 clip per batch.</div>
+              </div>
+              <button class="btn good" id="ytBatchCaptureBtn" type="button">Capture Clip Terpilih</button>
+            </div>
+          </div>
+          <div id="results"></div>
+          <div class="batchclips" id="ytBatchClips"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="card pad">
+        <video id="video" controls playsinline></video>
+        <video id="outroVideo" hidden playsinline></video>
+        <div id="detailEmpty" class="detail-empty">Pilih video lalu jalankan Analisis AI.</div>
+        <div id="detail" style="display:none">
+          <div class="row" style="justify-content:space-between;margin-top:14px">
+            <div>
+              <div class="score hot" id="detailScore">0/100</div>
+              <div class="time" id="detailTime"></div>
+            </div>
+            <div class="row">
+              <button class="btn" id="previewBtn">Preview Clip</button>
+              <button class="btn good" id="ytCutBtn" type="button" style="display:none">3. Cut / Ambil Clip YouTube</button>
+            </div>
+          </div>
+          <h3 id="detailTitle" style="margin-bottom:6px"></h3>
+          <div class="reason" id="detailReason"></div>
+
+          <div class="kpi">
+            <div><span>HOOK</span><b id="kHook">0</b></div>
+            <div><span>CURIOSITY</span><b id="kCuriosity">0</b></div>
+            <div><span>CONFLICT</span><b id="kConflict">0</b></div>
+            <div><span>INFO</span><b id="kInfo">0</b></div>
+          </div>
+
+          <div class="transcript" id="detailTranscript"></div>
+
+          <div class="exportbox" id="exportBox">
+            <h3 style="margin:0 0 10px">Export Clip</h3>
+
+            <div class="templatebox">
+              <div class="templategrid">
+                <div>
+                  <label class="small">Format Clip</label>
+                  <select id="clipTemplate">
+                    <option value="editorial">Editorial 9:16 — seperti referensi</option>
+                    <option value="fullscreen">Fullscreen biasa</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="small">Custom Background</label>
+                  <button class="btn" id="bgBtn" type="button">Pilih PNG/JPG</button>
+                  <input id="bgInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+                </div>
+              </div>
+
+              <div class="templategrid" style="margin-top:10px">
+                <div>
+                  <label class="small">Headline Baris 1</label>
+                  <input id="headline1" value="" placeholder="Headline utama (opsional)" style="width:100%;background:#101621;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px">
+                </div>
+                <div>
+                  <label class="small">Headline Baris 2 / Aksen</label>
+                  <input id="headline2" value="" placeholder="Headline aksen (opsional)" style="width:100%;background:#101621;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px">
+                </div>
+              </div>
+
+              <div class="templategrid" style="margin-top:10px">
+                <div>
+                  <label class="small">Posisi video tengah <span class="rangeval" id="videoYVal">30%</span></label>
+                  <input id="videoY" type="range" min="20" max="55" value="30" style="width:100%">
+                </div>
+                <div>
+                  <label class="small">Tinggi area video <span class="rangeval" id="videoHVal">28%</span></label>
+                  <input id="videoH" type="range" min="18" max="45" value="28" style="width:100%">
+                </div>
+              </div>
+
+              <div class="templategrid" style="margin-top:10px">
+                <div>
+                  <label class="small">Intro Poster</label>
+                  <select id="introPoster">
+                    <option value="1">1 detik</option>
+                    <option value="0">Nonaktif</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="small">Outro Poster</label>
+                  <select id="outroPoster">
+                    <option value="1">1 detik</option>
+                    <option value="0">Nonaktif</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:10px">
+                <button class="btn" id="templatePreviewBtn" type="button">Preview Template</button>
+                <button class="btn" id="previewCustomBtn" type="button">Preview Hasil Custom</button>
+                <button class="btn" id="outroBtn" type="button">Pilih File Outro</button>
+                <input id="outroInput" type="file" accept="video/*" hidden>
+                <span class="badge" id="bgStatus">Background default</span>
+                <span class="badge" id="outroStatus">Outro: tidak ada</span>
+              </div>
+
+              <div class="previewframe" id="previewFrame">
+                <canvas id="templatePreview" width="540" height="960"></canvas>
+              </div>
+            </div>
+
+            <div class="controls" style="margin-top:12px">
+              <div>
+                <label class="small">Rasio</label>
+                <select id="ratio">
+                  <option value="9:16">9:16 — Shorts / Reels / TikTok</option>
+                  <option value="4:5">4:5 — Instagram Feed</option>
+                  <option value="1:1">1:1 — Square</option>
+                  <option value="16:9">16:9 — YouTube</option>
+                  <option value="original">Original</option>
+                </select>
+              </div>
+              <div>
+                <label class="small">Subtitle</label>
+                <select id="subtitle">
+                  <option value="on">Aktif</option>
+                  <option value="off">Nonaktif</option>
+                </select>
+              </div>
+            </div>
+            <div class="controls" style="margin-top:12px">
+              <div>
+                <label class="small">Judul File Export</label>
+                <input id="exportTitle" class="inputx" value="AIClip" maxlength="90" aria-label="Judul file export">
+                <div class="tiny">Nama file otomatis dibersihkan dari karakter yang tidak didukung Windows.</div>
+              </div>
+              <div>
+                <label class="small">Audio Export</label>
+                <select id="audioProfile">
+                  <option value="loud" selected>Loud & Clear — disarankan</option>
+                  <option value="normal">Normal</option>
+                  <option value="extra">Extra Loud — lebih agresif</option>
+                </select>
+                <div class="tiny">Menggunakan compressor/limiter agar suara lebih keras tanpa mudah clipping.</div>
+              </div>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <button class="btn good" id="exportBtn">Export Clip</button>
+              <span class="badge" id="exportFmt">Format mengikuti dukungan browser</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="note">
+          Pertama kali analisis memerlukan internet untuk mengunduh library/model AI. Model disimpan oleh browser sehingga pemakaian berikutnya lebih cepat. Video tidak di-upload ke server.
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+
+<div class="yt-capture-stage" id="ytCaptureStage">
+  <div class="yt-player-host" id="ytPlayerHost"></div>
+  <div class="yt-capture-banner" id="ytCaptureBanner">
+    <b>Capture YouTube</b><br>
+    Saat pemilih layar muncul, pilih <b>tab AI Clipper ini</b> dan aktifkan <b>Bagikan audio tab</b>.
+  </div>
+  <button class="yt-close" id="ytCaptureClose" type="button">×</button>
+  <div class="yt-capture-progress"><i id="ytCaptureBar"></i></div>
+</div>
+
+<canvas id="renderCanvas" hidden></canvas>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+let file=null, objectUrl=null, transcript=[], candidates=[], selected=null, previewTimer=null, transcriber=null, transcriberKey='';
+let bgImage=null, bgObjectUrl=null;
+let outroFile=null, outroObjectUrl=null;
+let customPreviewTimer=null;
+let sharedAudioCtx=null, sharedAudioDest=null, sharedMainSource=null, sharedOutroSource=null;
+let sharedMainGain=null, sharedOutroGain=null, sharedCompressor=null, sharedLimiter=null, sharedOutputGain=null;
+let clipperMethod='ai', manualMode='script', exportTitleUserEdited=false;
+let sourceMode='local';
+let ytVideoId='', ytMetadata=null, ytBridgeReady=false, ytPlayer=null, ytPlayerReady=false;
+let ytBatchSelected=new Set(), ytBatchClips=[], ytCaptureAbort=false;
+let ytBridgePending=new Map(), ytBridgeSeq=0;
+const video=$('video');
+const outroVideo=$('outroVideo');
+
+function log(msg){ $('log').textContent += ($('log').textContent?'\\n':'') + msg; $('log').scrollTop=$('log').scrollHeight; }
+function status(msg,p=null){ $('statusText').textContent=msg; if(p!==null){$('pct').textContent=Math.round(p)+'%';$('bar').style.width=Math.max(0,Math.min(100,p))+'%';} }
+function fmtTime(s){ s=Math.max(0,Math.round(s||0)); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return [h,m,ss].map(x=>String(x).padStart(2,'0')).join(':'); }
+function fmtMinuteSecond(s){
+  s=Math.max(0,Math.round(Number(s)||0));
+  const m=Math.floor(s/60),ss=s%60;
+  return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+function sanitizeFileName(name){
+  let s=String(name||'').trim();
+  s=s.replace(/[<>:"/\\|?*\x00-\x1F]/g,' ');
+  s=s.replace(/\s+/g,' ').replace(/[. ]+$/g,'').trim();
+  const reserved=/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+  if(reserved.test(s)) s='AIClip '+s;
+  if(!s) s='AIClip';
+  return s.slice(0,90);
+}
+function syncExportTitleFromSelection(force=false){
+  if(!$('exportTitle') || !selected) return;
+  if(force || !exportTitleUserEdited){
+    $('exportTitle').value=sanitizeFileName(selected.title || 'AIClip');
+  }
+}
+function fmtSize(n){ const u=['B','KB','MB','GB']; let i=0,v=n; while(v>=1024&&i<u.length-1){v/=1024;i++} return v.toFixed(i?1:0)+' '+u[i]; }
+function clamp(v){return Math.max(0,Math.min(100,Math.round(v)))}
+function overlaps(a,b){const x=Math.max(0,Math.min(a.end,b.end)-Math.max(a.start,b.start)); return x/Math.max(1,Math.min(a.end-a.start,b.end-b.start));}
+
+function applyAudioProfile(){
+  if(!sharedAudioCtx || !sharedMainGain || !sharedOutroGain || !sharedCompressor || !sharedLimiter || !sharedOutputGain) return;
+  const profile=$('audioProfile')?.value || 'loud';
+
+  let inputGain=1.0;
+  let threshold=-6;
+  let ratio=10;
+  let knee=6;
+  let attack=0.003;
+  let release=0.22;
+  let outputGain=0.94;
+
+  if(profile==='loud'){
+    inputGain=1.65;
+    threshold=-9;
+    ratio=12;
+    knee=7;
+    attack=0.0025;
+    release=0.24;
+    outputGain=0.92;
+  }else if(profile==='extra'){
+    inputGain=2.05;
+    threshold=-11;
+    ratio=16;
+    knee=8;
+    attack=0.002;
+    release=0.28;
+    outputGain=0.88;
+  }
+
+  const now=sharedAudioCtx.currentTime;
+  sharedMainGain.gain.setTargetAtTime(inputGain,now,0.01);
+  sharedOutroGain.gain.setTargetAtTime(inputGain,now,0.01);
+  sharedCompressor.threshold.setValueAtTime(threshold,now);
+  sharedCompressor.knee.setValueAtTime(knee,now);
+  sharedCompressor.ratio.setValueAtTime(ratio,now);
+  sharedCompressor.attack.setValueAtTime(attack,now);
+  sharedCompressor.release.setValueAtTime(release,now);
+
+  // Second stage = safety limiter untuk menahan transient/peak.
+  sharedLimiter.threshold.setValueAtTime(-1.5,now);
+  sharedLimiter.knee.setValueAtTime(0,now);
+  sharedLimiter.ratio.setValueAtTime(20,now);
+  sharedLimiter.attack.setValueAtTime(0.001,now);
+  sharedLimiter.release.setValueAtTime(0.08,now);
+
+  sharedOutputGain.gain.setTargetAtTime(outputGain,now,0.01);
+}
+
+async function ensureSharedAudioGraph(){
+  if(!sharedAudioCtx){
+    sharedAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    sharedAudioDest=sharedAudioCtx.createMediaStreamDestination();
+
+    sharedMainSource=sharedAudioCtx.createMediaElementSource(video);
+    sharedOutroSource=sharedAudioCtx.createMediaElementSource(outroVideo);
+
+    sharedMainGain=sharedAudioCtx.createGain();
+    sharedOutroGain=sharedAudioCtx.createGain();
+    sharedCompressor=sharedAudioCtx.createDynamicsCompressor();
+    sharedLimiter=sharedAudioCtx.createDynamicsCompressor();
+    sharedOutputGain=sharedAudioCtx.createGain();
+
+    // Satu jalur audio untuk preview + export:
+    // source -> gain -> leveling compressor -> safety limiter -> output.
+    sharedMainSource.connect(sharedMainGain);
+    sharedOutroSource.connect(sharedOutroGain);
+    sharedMainGain.connect(sharedCompressor);
+    sharedOutroGain.connect(sharedCompressor);
+    sharedCompressor.connect(sharedLimiter);
+    sharedLimiter.connect(sharedOutputGain);
+
+    // Preview yang terdengar dan audio yang direkam memakai proses yang sama.
+    sharedOutputGain.connect(sharedAudioCtx.destination);
+    sharedOutputGain.connect(sharedAudioDest);
+
+    applyAudioProfile();
+  }
+  if(sharedAudioCtx.state==='suspended') await sharedAudioCtx.resume();
+  applyAudioProfile();
+  return sharedAudioDest.stream;
+}
+
+function readTypedTime(minuteId, secondId){
+  const minute=Number($(minuteId).value);
+  const second=Number($(secondId).value);
+  if(!Number.isFinite(minute) || !Number.isFinite(second)) return NaN;
+  if(minute<0 || second<0 || second>59) return NaN;
+  if(!Number.isInteger(minute) || !Number.isInteger(second)) return NaN;
+  return minute*60+second;
+}
+function setTypedTime(minuteId, secondId, totalSeconds){
+  const total=Math.max(0,Math.floor(Number(totalSeconds)||0));
+  $(minuteId).value=String(Math.floor(total/60));
+  $(secondId).value=String(total%60);
+}
+function refreshManualTimeStatus(){
+  const start=readTypedTime('startMinute','startSecond');
+  const end=readTypedTime('endMinute','endSecond');
+  if(Number.isNaN(start)||Number.isNaN(end)){
+    $('manualTimeStatus').textContent='Periksa nilai menit/detik';
+    return;
+  }
+  $('manualTimeStatus').textContent=`${fmtMinuteSecond(start)} → ${fmtMinuteSecond(end)}`;
+}
+function tokenize(t){return (String(t||'').toLowerCase().match(/[\p{L}\p{N}%]+/gu)||[])}
+function countOverlap(text, words){
+  if(!words.length) return 0;
+  const s=new Set(tokenize(text));
+  return words.reduce((n,w)=>n+(s.has(w)?1:0),0);
+}
+function scoreTextDims(text,dur){
+  const HOOK=['ternyata','faktanya','sebenarnya','masalah sebenarnya','yang tidak banyak orang tahu','justru','ini yang terjadi','buktinya','akhirnya'];
+  const QUESTION=['kenapa','mengapa','bagaimana','siapa','apa','kok','benarkah','apakah'];
+  const CONFLICT=['tapi','tetapi','namun','salah','bohong','bantah','bukan','gagal','masalah','konflik','protes','aneh','dicopot','dipecat','ditolak','korupsi'];
+  const INFO=['data','fakta','angka','persen','miliar','juta','ribu','dokumen','hasil','laporan','bukti','anggaran','saham','rupiah'];
+  const EMOTION=['kaget','marah','kecewa','takut','senang','sedih','parah','gila','luar biasa','mengejutkan','viral','heboh'];
+  const cnt=(t,v)=>{const s=new Set(tokenize(t));return v.reduce((n,x)=>n+(s.has(x)?1:0),0)};
+  const l=text.toLowerCase(),qh=cnt(text,QUESTION),cf=cnt(text,CONFLICT),inf=cnt(text,INFO)+(text.match(/\b\d+(?:[.,]\d+)?%?/g)||[]).length,em=cnt(text,EMOTION),hh=HOOK.filter(x=>l.includes(x)).length;
+  const hook=clamp(40+hh*13+qh*7+(text.includes('?')?6:0));
+  const curiosity=clamp(38+qh*10+hh*10+cf*4);
+  const conflict=clamp(30+cf*14);
+  const information=clamp(38+inf*9+Math.min(18,tokenize(text).length/12));
+  const emotion=clamp(30+em*15+(text.includes('!')?5:0));
+  const standalone=clamp((55+Math.min(25,(text.match(/[.!?]+/g)||[]).length*5)+Math.max(0,20-Math.abs(dur-42)))/1.15);
+  const score=clamp(hook*.25+curiosity*.20+conflict*.15+information*.15+emotion*.10+standalone*.15);
+  return {hook,curiosity,conflict,information,emotion,standalone,score};
+}
+function buildSelection(start,end,title,reason,chunkSource){
+  start=Math.max(0,start||0); end=Math.min(video.duration||end,end||0);
+  if(end<=start) throw new Error('Waktu akhir harus lebih besar dari waktu awal.');
+  const chunks = (chunkSource||transcript).filter(c=>c.end>=start && c.start<=end);
+  const text = chunks.length ? chunks.map(c=>c.text).join(' ').replace(/\s+/g,' ').trim() : 'Manual cut';
+  const dims = scoreTextDims(text||'Manual cut', end-start);
+  return {start,end,title:title||'Custom Cut',reason:reason||'Dipilih manual',text, ...dims, chunks};
+}
+function applySelection(sel, clearActive=true){
+  selected=sel;
+  $('detailEmpty').style.display='none';$('detail').style.display='block';
+  $('exportBox').style.display=file?'block':'none';
+  $('previewBtn').disabled=!file;
+  $('ytCutBtn').style.display=(sourceMode==='youtube' && !file)?'inline-block':'none';
+  $('detailScore').textContent=`${selected.score}/100`;
+  $('detailTime').textContent=`${fmtTime(selected.start)} → ${fmtTime(selected.end)} • ${Math.round(selected.end-selected.start)} detik`;
+  $('detailTitle').textContent=selected.title;$('detailReason').textContent=selected.reason;
+  $('kHook').textContent=selected.hook;$('kCuriosity').textContent=selected.curiosity;$('kConflict').textContent=selected.conflict;$('kInfo').textContent=selected.information;
+  $('detailTranscript').textContent=selected.text || '(Tidak ada transcript pada rentang ini)';
+  if(clearActive) document.querySelectorAll('.result').forEach((e)=>e.classList.remove('active'));
+  setTypedTime('startMinute','startSecond',selected.start);
+  setTypedTime('endMinute','endSecond',selected.end);
+  refreshManualTimeStatus();
+  syncExportTitleFromSelection();
+  drawTemplatePreview();
+}
+function findSelectionFromScript(query){
+  if(!transcript.length) throw new Error('Transcript belum ada. Jalankan transkripsi terlebih dahulu.');
+  const q=String(query||'').trim().toLowerCase();
+  const words=tokenize(q).filter(w=>w.length>2);
+  if(!words.length) throw new Error('Isi script / keyword terlebih dahulu.');
+
+  let best={score:-1,startIdx:0,endIdx:0};
+
+  for(let i=0;i<transcript.length;i++){
+    let joined='';
+    for(let j=i;j<Math.min(transcript.length,i+8);j++){
+      joined+=(joined?' ':'')+transcript[j].text;
+      const norm=joined.toLowerCase().replace(/\s+/g,' ').trim();
+      const wordHit=countOverlap(norm,words);
+      const phraseBonus=norm.includes(q)?Math.max(6,words.length):0;
+      const queryTokens=new Set(words);
+      const segTokens=new Set(tokenize(norm));
+      const union=new Set([...queryTokens,...segTokens]).size||1;
+      const inter=[...queryTokens].filter(x=>segTokens.has(x)).length;
+      const jaccard=inter/union;
+      const score=wordHit*3+phraseBonus+jaccard*10;
+
+      if(score>best.score){
+        best={score,startIdx:i,endIdx:j};
+      }
+
+      if((transcript[j].end-transcript[i].start)>70) break;
+    }
+  }
+
+  if(best.score<=0) throw new Error('Bagian script tidak ditemukan di transcript.');
+
+  let startIdx=best.startIdx,endIdx=best.endIdx;
+  let start=transcript[startIdx].start,end=transcript[endIdx].end;
+
+  if(end-start<8){
+    if(startIdx>0){startIdx--;start=transcript[startIdx].start;}
+    while(end-start<12 && endIdx<transcript.length-1){
+      endIdx++;end=transcript[endIdx].end;
+    }
+  }
+
+  const chunkSet=transcript.slice(startIdx,endIdx+1);
+  const joined=chunkSet.map(x=>x.text).join(' ').replace(/\s+/g,' ').trim();
+  const dims=scoreTextDims(joined,end-start);
+
+  return {
+    start,end,
+    title:'Script Cut',
+    reason:'Dipilih otomatis dari script / keyword',
+    text:joined,
+    ...dims,
+    chunks:chunkSet
+  };
+}
+
+async function setFile(f){
+  if(!f||!f.type.startsWith('video/')) return alert('Pilih file video.');
+  resetAnalysis();
+  exportTitleUserEdited=false;
+  if($('exportTitle')) $('exportTitle').value='AIClip';
+  file=f;
+  if(objectUrl) URL.revokeObjectURL(objectUrl);
+  objectUrl=URL.createObjectURL(f);
+  video.src=objectUrl;
+  await new Promise(res=>{video.onloadedmetadata=res});
+  $('fileMeta').style.display='block';
+  $('fileMeta').innerHTML=`<b>${escapeHtml(f.name)}</b> &nbsp; • &nbsp; ${fmtSize(f.size)} &nbsp; • &nbsp; ${fmtTime(video.duration)}`;
+  $('analyzeBtn').disabled=false;
+  $('manualScriptCutBtn').disabled=false;
+  $('manualTimeCutBtn').disabled=false;
+  $('manualScriptStatus').textContent='Siap';
+  setTypedTime('startMinute','startSecond',0);
+  setTypedTime('endMinute','endSecond',Math.floor(video.duration||0));
+  refreshManualTimeStatus();
+
+  $('detailEmpty').textContent='Video siap. Klik Analisis AI.';
+  if(f.size>1.5*1024**3) log('Catatan: video >1.5 GB dapat menggunakan RAM besar di browser.');
+}
+
+function resetAnalysis(){
+  transcript=[];candidates=[];selected=null;
+  try{video.pause();outroVideo.pause();}catch(e){}
+  if(customPreviewTimer){cancelAnimationFrame(customPreviewTimer);customPreviewTimer=null;}
+  $('results').innerHTML='';$('count').textContent='0 kandidat';$('detail').style.display='none';$('detailEmpty').style.display='block';
+  $('log').textContent='';status('Siap.',0);
+}
+function hardReset(){
+  resetAnalysis(); file=null;
+  ytBatchSelected.clear();
+  ytBatchClips.forEach(x=>{try{URL.revokeObjectURL(x.url)}catch(e){}});
+  ytBatchClips=[];renderBatchClips();
+  if($('exportTitle')) $('exportTitle').value='AIClip';
+  exportTitleUserEdited=false;
+  try{video.pause();outroVideo.pause();}catch(e){}
+  $('fileMeta').style.display='none'; $('analyzeBtn').disabled=true;
+  $('manualScriptCutBtn').disabled=true; $('manualTimeCutBtn').disabled=true;
+  $('manualScriptStatus').textContent='Video belum dipilih';
+  setTypedTime('startMinute','startSecond',0);
+  setTypedTime('endMinute','endSecond',0);
+  refreshManualTimeStatus();
+  video.removeAttribute('src');video.load();
+  if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;
+}
+
+$('pickBtn').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=e=>setFile(e.target.files[0]);
+$('model').addEventListener('change',async()=>{
+  if(transcriber){ try{await transcriber.dispose?.();}catch(e){} }
+  transcriber=null; transcriberKey='';
+});
+$('device').addEventListener('change',async()=>{
+  if(transcriber){ try{await transcriber.dispose?.();}catch(e){} }
+  transcriber=null; transcriberKey='';
+});
+$('audioProfile').addEventListener('change',applyAudioProfile);
+$('resetBtn').onclick=hardReset;
+$('manualResetBtn').onclick=()=>{
+  $('scriptQueryTop').value='';
+  setTypedTime('startMinute','startSecond',0);
+  setTypedTime('endMinute','endSecond',file?Math.floor(video.duration||0):0);
+  $('manualScriptStatus').textContent=file?'Siap':'Video belum dipilih';
+  refreshManualTimeStatus();
+};
+
+function setClipperMethod(method){
+  clipperMethod=method;
+  const isAI=method==='ai';
+  $('methodAI').classList.toggle('active',isAI);
+  $('methodManual').classList.toggle('active',!isAI);
+  $('manualPanel').style.display=isAI?'none':'block';
+  $('aiActionRow').style.display=isAI?'flex':'none';
+  $('manualActionRow').style.display=isAI?'none':'flex';
+}
+function setManualMode(mode){
+  manualMode=mode;
+  const isScript=mode==='script';
+  $('manualTabScript').classList.toggle('active',isScript);
+  $('manualTabTime').classList.toggle('active',!isScript);
+  $('manualScriptPanel').style.display=isScript?'block':'none';
+  $('manualTimePanel').style.display=isScript?'none':'block';
+}
+$('methodAI').onclick=()=>setClipperMethod('ai');
+$('methodManual').onclick=()=>setClipperMethod('manual');
+$('manualTabScript').onclick=()=>setManualMode('script');
+$('manualTabTime').onclick=()=>setManualMode('time');
+['startMinute','startSecond','endMinute','endSecond'].forEach(id=>{
+  $(id).addEventListener('input',()=>{
+    const el=$(id);
+    if(el.value==='') el.value='0';
+    if(id.includes('Second')){
+      let v=Math.floor(Number(el.value)||0);
+      v=Math.max(0,Math.min(59,v));
+      el.value=String(v);
+    }else{
+      let v=Math.floor(Number(el.value)||0);
+      v=Math.max(0,v);
+      el.value=String(v);
+    }
+    refreshManualTimeStatus();
+  });
+});
+
+const drop=$('drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+drop.addEventListener('drop',e=>setFile(e.dataTransfer.files[0]));
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+function averageChannels(buf){
+  const out=new Float32Array(buf.length);
+  for(let ch=0;ch<buf.numberOfChannels;ch++){
+    const d=buf.getChannelData(ch);
+    for(let i=0;i<d.length;i++) out[i]+=d[i]/buf.numberOfChannels;
+  }
+  return out;
+}
+async function decodeAudio16k(f){
+  status('Membaca audio dari video…',8); log('Membaca file lokal…');
+  const ab=await f.arrayBuffer();
+  const ac=new (window.AudioContext||window.webkitAudioContext)();
+  let decoded;
+  try{ decoded=await ac.decodeAudioData(ab.slice(0)); }
+  catch(e){ await ac.close(); throw new Error('Browser tidak dapat membaca audio dari video ini. Coba MP4 H.264/AAC atau WebM.'); }
+  status('Menyiapkan audio 16 kHz…',16);
+  let mono=averageChannels(decoded);
+  if(decoded.sampleRate!==16000){
+    const offline=new OfflineAudioContext(1,Math.ceil(decoded.duration*16000),16000);
+    const b=offline.createBuffer(1,mono.length,decoded.sampleRate);
+    b.copyToChannel(mono,0);
+    const src=offline.createBufferSource();src.buffer=b;src.connect(offline.destination);src.start();
+    const rendered=await offline.startRendering();
+    mono=new Float32Array(rendered.getChannelData(0));
+  }
+  await ac.close();
+  return mono;
+}
+
+async function loadWhisper(){
+  const modelName=$('model').value;
+  const selectedDevice=$('device').value;
+  const preferred=(selectedDevice==='auto' && navigator.gpu)?'webgpu':'wasm';
+  const key=`${modelName}|${preferred}`;
+
+  if(transcriber && transcriberKey===key) return transcriber;
+
+  if(transcriber && transcriberKey!==key){
+    try{ await transcriber.dispose?.(); }catch(e){}
+    transcriber=null;
+    transcriberKey='';
+  }
+
+  status('Memuat engine Whisper…',22);
+  log('Mengunduh / membuka cache Transformers.js…');
+  const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0');
+  env.allowLocalModels=false;
+
+  async function build(device){
+    log(`Mode AI: ${device.toUpperCase()}`);
+    status(`Memuat model Whisper (${device.toUpperCase()})…`,28);
+    return await pipeline('automatic-speech-recognition',modelName,{device});
+  }
+
+  try{
+    transcriber=await build(preferred);
+    transcriberKey=key;
+    return transcriber;
+  }catch(err){
+    if(preferred==='webgpu'){
+      log('WebGPU gagal. Otomatis fallback ke CPU/WASM.');
+      status('WebGPU gagal, mencoba CPU/WASM…',28);
+      transcriber=await build('wasm');
+      transcriberKey=`${modelName}|wasm`;
+      $('device').value='wasm';
+      return transcriber;
+    }
+    throw err;
+  }
+}
+
+function makeCandidates(chunks){
+  const HOOK=['ternyata','faktanya','sebenarnya','masalah sebenarnya','yang tidak banyak orang tahu','justru','ini yang terjadi','buktinya','akhirnya'];
+  const QUESTION=['kenapa','mengapa','bagaimana','siapa','apa','kok','benarkah','apakah'];
+  const CONFLICT=['tapi','tetapi','namun','salah','bohong','bantah','bukan','gagal','masalah','konflik','protes','aneh','dicopot','dipecat','ditolak','korupsi'];
+  const INFO=['data','fakta','angka','persen','miliar','juta','ribu','dokumen','hasil','laporan','bukti','anggaran','saham','rupiah'];
+  const EMOTION=['kaget','marah','kecewa','takut','senang','sedih','parah','gila','luar biasa','mengejutkan','viral','heboh'];
+  const tok=t=>t.toLowerCase().match(/[\\p{L}\\p{N}%]+/gu)||[];
+  const cnt=(t,v)=>{const s=new Set(tok(t));return v.reduce((n,x)=>n+(s.has(x)?1:0),0)};
+  const dims=(text,dur)=>{
+    const l=text.toLowerCase(),qh=cnt(text,QUESTION),cf=cnt(text,CONFLICT),inf=cnt(text,INFO)+(text.match(/\\b\\d+(?:[.,]\\d+)?%?/g)||[]).length,em=cnt(text,EMOTION),hh=HOOK.filter(x=>l.includes(x)).length;
+    const hook=clamp(40+hh*13+qh*7+(text.includes('?')?6:0));
+    const curiosity=clamp(38+qh*10+hh*10+cf*4);
+    const conflict=clamp(30+cf*14);
+    const information=clamp(38+inf*9+Math.min(18,tok(text).length/12));
+    const emotion=clamp(30+em*15+(text.includes('!')?5:0));
+    const standalone=clamp((55+Math.min(25,(text.match(/[.!?]+/g)||[]).length*5)+Math.max(0,20-Math.abs(dur-42)))/1.15);
+    const score=clamp(hook*.25+curiosity*.20+conflict*.15+information*.15+emotion*.10+standalone*.15);
+    return {hook,curiosity,conflict,information,emotion,standalone,score};
+  };
+  const list=[];
+  for(let i=0;i<chunks.length;i++){
+    let parts=[],start=chunks[i].start;
+    for(let j=i;j<Math.min(chunks.length,i+10);j++){
+      parts.push(chunks[j].text); const end=chunks[j].end,dur=end-start;
+      if(dur<20)continue;if(dur>75)break;
+      const text=parts.join(' ').replace(/\\s+/g,' ').trim(); if(text.length<70)continue;
+      const d=dims(text,dur);
+      const sentence=(text.match(/^[^.!?]+[.!?]?/)||[text])[0].trim();
+      const title=(sentence.split(/\\s+/).slice(0,12).join(' ')+(sentence.split(/\\s+/).length>12?'…':'')).slice(0,100);
+      const vals=[['hook',d.hook,'hook kuat'],['curiosity',d.curiosity,'rasa penasaran tinggi'],['conflict',d.conflict,'ada konflik/kontras'],['information',d.information,'nilai informasi tinggi'],['emotion',d.emotion,'muatan emosi'],['standalone',d.standalone,'cukup berdiri sendiri']].sort((a,b)=>b[1]-a[1]);
+      list.push({start,end,text,title,reason:vals.slice(0,3).map(x=>x[2]).join(', '),...d,chunks:chunks.slice(i,j+1)});
+      if(dur>=38)break;
+    }
+  }
+  list.sort((a,b)=>b.score-a.score);
+  const chosen=[];
+  for(const c of list){
+    if(chosen.some(p=>overlaps(c,p)>.55))continue;
+    chosen.push(c);if(chosen.length>=12)break;
+  }
+  return chosen;
+}
+
+function renderResults(){
+  $('results').innerHTML='';$('count').textContent=`${candidates.length} kandidat`;
+  $('ytBatchBar').style.display=(sourceMode==='youtube' && candidates.length)?'block':'none';
+  candidates.forEach((c,i)=>{
+    const el=document.createElement('div');el.className='result';el.dataset.i=i;
+    const batch=(sourceMode==='youtube')
+      ? `<label class="row" style="gap:6px" onclick="event.stopPropagation()"><input class="ytcheck" type="checkbox" data-yt-check="${i}" ${ytBatchSelected.has(i)?'checked':''}><span class="tiny">Batch</span></label>`
+      : `<span class="badge">#${i+1}</span>`;
+    el.innerHTML=`<div class="resulthead"><div><div class="score ${c.score>=85?'hot':''}">${c.score}/100</div><div class="time">${fmtTime(c.start)} → ${fmtTime(c.end)} • ${Math.round(c.end-c.start)} detik</div></div>${batch}</div>
+      <div class="hook">${escapeHtml(c.title)}</div><div class="reason">${escapeHtml(c.reason)}</div>
+      <div class="meters"><div class="meter">Hook <b>${c.hook}</b></div><div class="meter">Curiosity <b>${c.curiosity}</b></div><div class="meter">Info <b>${c.information}</b></div></div>`;
+    el.onclick=()=>selectCandidate(i);
+    $('results').appendChild(el);
+  });
+  document.querySelectorAll('[data-yt-check]').forEach(cb=>{
+    cb.addEventListener('change',e=>{
+      const i=Number(e.target.dataset.ytCheck);
+      if(e.target.checked){
+        if(ytBatchSelected.size>=10){e.target.checked=false;alert('Maksimal 10 clip per batch.');return;}
+        ytBatchSelected.add(i);
+      }else ytBatchSelected.delete(i);
+    });
+  });
+  if(candidates.length)selectCandidate(0);
+}
+function selectCandidate(i){
+  document.querySelectorAll('.result').forEach((e,j)=>e.classList.toggle('active',j===i));
+  applySelection(candidates[i], false);
+}
+
+
+
+// =========================
+// YouTube v1.4.3
+// =========================
+function extractYouTubeId(value){
+  const raw=String(value||'').trim();
+  if(/^[\w-]{11}$/.test(raw)) return raw;
+  try{
+    const u=new URL(raw);
+    if(u.hostname.includes('youtu.be')) return u.pathname.split('/').filter(Boolean)[0]?.slice(0,11)||'';
+    if(u.searchParams.get('v')) return u.searchParams.get('v').slice(0,11);
+    const parts=u.pathname.split('/').filter(Boolean);
+    const ix=parts.findIndex(x=>['shorts','embed','live'].includes(x));
+    if(ix>=0 && parts[ix+1]) return parts[ix+1].slice(0,11);
+  }catch(e){}
+  return '';
+}
+function setSourceMode(mode){
+  sourceMode=mode;
+  const local=mode==='local';
+  $('sourceLocalBtn').classList.toggle('active',local);
+  $('sourceYoutubeBtn').classList.toggle('active',!local);
+  $('localSourcePanel').style.display=local?'block':'none';
+  $('youtubeSourcePanel').style.display=local?'none':'block';
+  if(!local){
+    setClipperMethod('ai');
+    $('methodManual').disabled=true;
+    $('model').closest('.controls').style.display='none';
+    $('aiActionRow').style.display='none';
+    $('manualActionRow').style.display='none';
+    $('detailEmpty').textContent='Masukkan link YouTube lalu ambil transcript.';
+    checkYouTubeBridge();
+  }else{
+    $('methodManual').disabled=false;
+    $('model').closest('.controls').style.display='grid';
+    setClipperMethod(clipperMethod==='manual'?'manual':'ai');
+    $('ytBatchBar').style.display='none';
+    $('ytCutBtn').style.display='none';
+    if(!file) $('detailEmpty').textContent='Pilih video lalu jalankan Analisis AI.';
+  }
+}
+$('sourceLocalBtn').onclick=()=>setSourceMode('local');
+$('sourceYoutubeBtn').onclick=()=>setSourceMode('youtube');
+
+const AI_CLIPPER_CONNECTOR_ID='afhbaefhjjiaobjgoboijldglfmdnogg';
+
+function bridgeRequest(type,payload={},timeoutMs=45000){
+  return new Promise((resolve,reject)=>{
+    if(!window.chrome?.runtime?.sendMessage){
+      reject(new Error('AI Clipper Connector belum terpasang atau tidak aktif.'));
+      return;
+    }
+    let done=false;
+    const timer=setTimeout(()=>{
+      if(done)return;done=true;
+      reject(new Error('Connector timeout. Coba reload extension lalu buka ulang AI Clipper.'));
+    },timeoutMs);
+
+    try{
+      chrome.runtime.sendMessage(
+        AI_CLIPPER_CONNECTOR_ID,
+        {type,...payload},
+        response=>{
+          if(done)return;done=true;clearTimeout(timer);
+          const err=chrome.runtime.lastError;
+          if(err){
+            reject(new Error(err.message || 'Connector tidak merespons.'));
+            return;
+          }
+          if(!response){
+            reject(new Error('Connector tidak mengirim respons.'));
+            return;
+          }
+          if(response.ok===false){
+            reject(new Error(response.error||'Connector gagal.'));
+            return;
+          }
+          resolve(response);
+        }
+      );
+    }catch(err){
+      clearTimeout(timer);done=true;
+      reject(err);
+    }
+  });
+}
+
+async function checkYouTubeBridge(){
+  $('ytBridgeStatus').textContent='Connector: memeriksa…';
+  try{
+    const r=await bridgeRequest('YT_BRIDGE_PING',{},5000);
+    ytBridgeReady=!!r.ok;
+    $('ytBridgeStatus').textContent=ytBridgeReady
+      ? `Connector: aktif ✓ v${r.version||'1.5.0'}`
+      : 'Connector: tidak aktif';
+  }catch(e){
+    ytBridgeReady=false;
+    $('ytBridgeStatus').textContent='Connector: belum terhubung';
+    log('CONNECTOR: '+e.message);
+  }
+}
+$('ytBridgeCheckBtn').onclick=checkYouTubeBridge;
+
+function showYTMeta(meta,segments,lang=''){
+  ytMetadata=meta||{};
+  $('ytMeta').style.display='block';
+  $('ytTitle').textContent=meta?.title||'Video YouTube';
+  $('ytChannel').textContent=meta?.channel||'-';
+  $('ytDuration').textContent=fmtTime(Number(meta?.duration||0));
+  $('ytTranscriptInfo').textContent=`${segments.length} segmen${lang?' • '+lang:''}`;
+  $('ytThumb').src=`https://i.ytimg.com/vi/${ytVideoId}/hqdefault.jpg`;
+}
+$('ytFetchBtn').onclick=async()=>{
+  const id=extractYouTubeId($('ytUrl').value);
+  if(!id) return alert('Link YouTube tidak valid.');
+  ytVideoId=id;
+  ytBatchSelected.clear();ytBatchClips=[];
+  renderBatchClips();
+  status('Mengambil transcript YouTube…',10);log(`YouTube ID: ${id}`);
+  $('ytFetchBtn').disabled=true;
+  try{
+    const r=await bridgeRequest('YT_FETCH_TRANSCRIPT',{videoId:id},60000);
+    if(!r.segments?.length) throw new Error('Transcript kosong.');
+    transcript=r.segments.map(x=>({start:Number(x.start||0),end:Number(x.end||0),text:String(x.text||'').trim()})).filter(x=>x.text);
+    showYTMeta(r.metadata,transcript,r.language||'');
+    $('ytAnalyzeBtn').disabled=false;
+    status(`Transcript siap — ${transcript.length} segmen.`,100);
+    log(`Transcript YouTube siap: ${transcript.length} segmen.`);
+    ensureYouTubePlayer(id).catch(err=>log('Player: '+err.message));
+  }catch(e){
+    status('Transcript YouTube gagal.',0);log('YT ERROR: '+e.message);
+    alert(e.message+'\n\nJika video tidak memiliki caption, gunakan fallback transcript manual.');
+  }finally{$('ytFetchBtn').disabled=false;}
+};
+$('ytAnalyzeBtn').onclick=()=>{
+  if(!transcript.length) return alert('Ambil transcript terlebih dahulu.');
+  status('Menganalisis potensi viral…',55);
+  candidates=makeCandidates(transcript);
+  ytBatchSelected.clear();
+  renderResults();
+  status(`Selesai — ${candidates.length} kandidat viral.`,100);
+  log(`Analisis YouTube: ${candidates.length} kandidat.`);
+};
+
+function parseManualTranscript(raw){
+  const text=String(raw||'').replace(/\r/g,'').trim();
+  if(!text) return [];
+  const lines=text.split('\n').map(x=>x.trim()).filter(Boolean);
+  const out=[];
+  const tsToSec=s=>{
+    const p=s.replace(',', '.').split(':').map(Number);
+    if(p.length===3)return p[0]*3600+p[1]*60+p[2];
+    if(p.length===2)return p[0]*60+p[1];
+    return Number(p[0])||0;
+  };
+  for(let i=0;i<lines.length;i++){
+    let line=lines[i];
+    let m=line.match(/^(\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?)\s*-->\s*(\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?)/);
+    if(m){
+      const start=tsToSec(m[1]),end=tsToSec(m[2]);
+      let t='';let j=i+1;
+      while(j<lines.length && !/^\d{1,2}:\d{2}/.test(lines[j]) && !/^\d+$/.test(lines[j])){t+=(t?' ':'')+lines[j];j++;}
+      if(t)out.push({start,end,text:t});i=j-1;continue;
+    }
+    m=line.match(/^\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?\s+(.+)$/);
+    if(m){const start=tsToSec(m[1]);out.push({start,end:start+6,text:m[2]});}
+  }
+  if(!out.length){
+    const sentences=text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    let t=0;for(const s of sentences){const dur=Math.max(4,Math.min(10,s.split(/\s+/).length/2.4));out.push({start:t,end:t+dur,text:s});t+=dur;}
+  }
+  for(let i=0;i<out.length-1;i++) if(out[i].end>out[i+1].start || out[i].end<=out[i].start) out[i].end=out[i+1].start;
+  return out;
+}
+$('ytManualTranscriptBtn').onclick=()=>{
+  const segs=parseManualTranscript($('ytManualTranscript').value);
+  if(!segs.length)return alert('Transcript tidak dapat dibaca.');
+  transcript=segs;
+  ytVideoId=extractYouTubeId($('ytUrl').value)||ytVideoId;
+  showYTMeta({title:'Transcript Manual',channel:'-',duration:segs.at(-1)?.end||0},segs,'manual');
+  $('ytAnalyzeBtn').disabled=false;
+  status(`Transcript manual siap — ${segs.length} segmen.`,100);
+  if(ytVideoId) ensureYouTubePlayer(ytVideoId).catch(()=>{});
+};
+
+function loadYouTubeAPI(){
+  return new Promise((resolve,reject)=>{
+    if(window.YT?.Player) return resolve();
+    const existing=document.querySelector('script[data-ai-yt-api]');
+    if(existing){
+      const started=Date.now();
+      const t=setInterval(()=>{if(window.YT?.Player){clearInterval(t);resolve()}else if(Date.now()-started>15000){clearInterval(t);reject(new Error('YouTube Player API timeout.'))}},100);
+      return;
+    }
+    const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.dataset.aiYtApi='1';
+    s.onerror=()=>reject(new Error('Gagal memuat YouTube Player API.'));
+    document.head.appendChild(s);
+    const prev=window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady=()=>{try{prev?.()}catch(e){} resolve();};
+    setTimeout(()=>{if(window.YT?.Player)resolve()},3000);
+  });
+}
+async function ensureYouTubePlayer(id){
+  if(ytPlayer && ytVideoId===id && ytPlayerReady)return ytPlayer;
+  await loadYouTubeAPI();
+  ytVideoId=id;ytPlayerReady=false;
+  if(ytPlayer){try{ytPlayer.destroy()}catch(e){} ytPlayer=null;}
+  $('ytPlayerHost').innerHTML='';
+  await new Promise((resolve,reject)=>{
+    let done=false;
+    ytPlayer=new YT.Player('ytPlayerHost',{
+      videoId:id,
+      width:'100%',height:'100%',
+      playerVars:{controls:0,rel:0,playsinline:1,fs:0,disablekb:1,iv_load_policy:3,modestbranding:1},
+      events:{
+        onReady:()=>{ytPlayerReady=true;done=true;resolve();},
+        onError:e=>{if(!done){done=true;reject(new Error('YouTube Player error '+e.data));}}
+      }
+    });
+    setTimeout(()=>{if(!done){done=true;reject(new Error('YouTube Player timeout.'));}},15000);
+  });
+  return ytPlayer;
+}
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+async function waitYTTime(target,timeout=7000){
+  const started=Date.now();
+  while(Date.now()-started<timeout){
+    const t=Number(ytPlayer?.getCurrentTime?.()||0);
+    if(Math.abs(t-target)<1.5 || t>=target)return;
+    await wait(100);
+  }
+}
+function ytCaptureMime(){
+  const types=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  return types.find(x=>MediaRecorder.isTypeSupported(x))||'';
+}
+async function recordOneYouTubeSegment(displayStream,sel,index,total){
+  // Pre-buffer 1.5 detik sebelum titik awal agar frame pertama lebih stabil.
+  const warmStart=Math.max(0,sel.start-1.5);
+  ytPlayer.pauseVideo();
+  ytPlayer.seekTo(warmStart,true);
+  await wait(350);
+  ytPlayer.playVideo();
+  const warmDeadline=Date.now()+6000;
+  while(Date.now()<warmDeadline && Number(ytPlayer.getCurrentTime()||0)<Math.max(warmStart,sel.start-.15)){
+    if(ytCaptureAbort) throw new Error('Capture dibatalkan.');
+    await wait(70);
+  }
+  ytPlayer.pauseVideo();
+  ytPlayer.seekTo(sel.start,true);
+  await wait(250);
+
+  const chunks=[];
+  const mime=ytCaptureMime();
+  const opts=mime?{mimeType:mime,videoBitsPerSecond:8_000_000,audioBitsPerSecond:192_000}:{videoBitsPerSecond:8_000_000,audioBitsPerSecond:192_000};
+  const rec=new MediaRecorder(displayStream,opts);
+  rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+  const done=new Promise((res,rej)=>{rec.onstop=res;rec.onerror=e=>rej(e.error||e)});
+  // Jangan biarkan UI capture ikut masuk ke hasil video.
+  $('ytCaptureBanner').style.display='none';
+  $('ytCaptureClose').style.display='none';
+  $('ytCaptureBar').parentElement.style.display='none';
+  rec.start(250);
+  ytPlayer.playVideo();
+  const start=sel.start,end=sel.end;
+  while(!ytCaptureAbort && Number(ytPlayer.getCurrentTime())<end){
+    const cur=Number(ytPlayer.getCurrentTime()||start);
+    const frac=Math.max(0,Math.min(1,(cur-start)/(end-start)));
+    $('ytCaptureBar').style.width=`${((index+frac)/total)*100}%`;
+    await wait(80);
+  }
+  ytPlayer.pauseVideo();
+  if(rec.state!=='inactive')rec.stop();
+  await done;
+  if(ytCaptureAbort) throw new Error('Capture dibatalkan.');
+  const blob=new Blob(chunks,{type:mime||'video/webm'});
+  const dur=end-start;
+  const name=`YT_${String(index+1).padStart(2,'0')}_${fmtMinuteSecond(start).replace(':','-')}_${fmtMinuteSecond(end).replace(':','-')}.webm`;
+  const f=new File([blob],name,{type:blob.type||'video/webm'});
+  const shiftedChunks=(sel.chunks||[]).map(c=>({...c,start:Math.max(0,c.start-start),end:Math.max(.01,c.end-start)}));
+  const editSel={...sel,start:0,end:dur,chunks:shiftedChunks,text:sel.text,title:sel.title};
+  return {file:f,selection:editSel,sourceSelection:sel,url:URL.createObjectURL(blob)};
+}
+async function captureYouTubeSelections(selections,{loadFirst=false}={}){
+  if(!ytVideoId)throw new Error('Video YouTube belum siap.');
+  if(!ytPlayerReady)throw new Error('Player YouTube belum siap. Tunggu beberapa detik lalu coba lagi.');
+  if(!navigator.mediaDevices?.getDisplayMedia)throw new Error('Browser tidak mendukung tab capture.');
+
+  $('ytCaptureStage').style.display='block';
+  $('ytCaptureBanner').style.display='block';
+  $('ytCaptureBar').style.width='0%';
+  ytCaptureAbort=false;
+
+  // Harus dipanggil langsung dari user gesture.
+  const stream=await navigator.mediaDevices.getDisplayMedia({
+    video:{frameRate:{ideal:30,max:60}},
+    audio:true,
+    preferCurrentTab:true,
+    selfBrowserSurface:'include',
+    surfaceSwitching:'exclude'
+  });
+  const captureTrack=stream.getVideoTracks()[0];
+  if(captureTrack) captureTrack.addEventListener('ended',()=>{ytCaptureAbort=true},{once:true});
+  try{
+    if(!stream.getAudioTracks().length){
+      throw new Error('Audio tab tidak terbagi. Ulangi dan aktifkan "Bagikan audio tab".');
+    }
+    const outputs=[];
+    for(let i=0;i<selections.length;i++){
+      if(ytCaptureAbort)break;
+      status(`Capture YouTube ${i+1}/${selections.length}…`,Math.round(i/selections.length*100));
+      const item=await recordOneYouTubeSegment(stream,selections[i],i,selections.length);
+      outputs.push(item);
+    }
+    ytBatchClips.push(...outputs);
+    renderBatchClips();
+    $('ytCaptureBar').style.width='100%';
+    status(`Capture selesai — ${outputs.length} clip.`,100);
+    if(loadFirst && outputs[0]) await loadYouTubeCapturedClip(outputs[0]);
+    return outputs;
+  }finally{
+    stream.getTracks().forEach(t=>t.stop());
+    try{ytPlayer.pauseVideo()}catch(e){}
+    $('ytCaptureStage').style.display='none';
+    $('ytCaptureBanner').style.display='block';
+    $('ytCaptureClose').style.display='block';
+    $('ytCaptureBar').parentElement.style.display='block';
+  }
+}
+$('ytCaptureClose').onclick=()=>{ytCaptureAbort=true;try{ytPlayer?.pauseVideo()}catch(e){}};
+$('ytCutBtn').onclick=async()=>{
+  if(!selected)return;
+  try{await captureYouTubeSelections([selected],{loadFirst:true})}
+  catch(e){console.error(e);status('Capture gagal.',0);alert(e.message||e);$('ytCaptureStage').style.display='none';}
+};
+$('ytBatchCaptureBtn').onclick=async()=>{
+  const indices=[...ytBatchSelected].sort((a,b)=>a-b);
+  if(!indices.length)return alert('Centang minimal satu kandidat.');
+  try{await captureYouTubeSelections(indices.map(i=>candidates[i]),{loadFirst:false})}
+  catch(e){console.error(e);status('Batch capture gagal.',0);alert(e.message||e);$('ytCaptureStage').style.display='none';}
+};
+function renderBatchClips(){
+  const root=$('ytBatchClips');root.innerHTML='';
+  if(!ytBatchClips.length)return;
+  const h=document.createElement('h3');h.textContent=`Hasil Batch (${ytBatchClips.length})`;root.appendChild(h);
+  ytBatchClips.forEach((item,i)=>{
+    const el=document.createElement('div');el.className='batchclip';
+    el.innerHTML=`<div class="row" style="justify-content:space-between"><div><b>${escapeHtml(item.sourceSelection.title||item.file.name)}</b><div class="tiny">${fmtTime(item.sourceSelection.start)} → ${fmtTime(item.sourceSelection.end)} • ${fmtSize(item.file.size)}</div></div><div class="row"><button class="btn" data-edit-batch="${i}">Edit</button><button class="btn" data-download-batch="${i}">Download</button></div></div>`;
+    root.appendChild(el);
+  });
+  root.querySelectorAll('[data-edit-batch]').forEach(b=>b.onclick=()=>loadYouTubeCapturedClip(ytBatchClips[Number(b.dataset.editBatch)]));
+  root.querySelectorAll('[data-download-batch]').forEach(b=>b.onclick=()=>{
+    const item=ytBatchClips[Number(b.dataset.downloadBatch)];
+    const a=document.createElement('a');a.href=item.url;a.download=item.file.name;document.body.appendChild(a);a.click();a.remove();
+  });
+}
+async function loadYouTubeCapturedClip(item){
+  const sourceTranscript=transcript;
+  const sourceCandidates=candidates;
+  await setFile(item.file);
+  // Editor memakai timeline clip baru mulai dari 0.
+  transcript=item.selection.chunks?.length?item.selection.chunks:[{start:0,end:item.selection.end,text:item.selection.text||''}];
+  candidates=[];
+  sourceMode='youtube';
+  applySelection(item.selection);
+  $('detailReason').textContent='Clip YouTube siap diedit • '+(item.sourceSelection.reason||'');
+  $('ytCutBtn').style.display='none';
+  $('previewBtn').disabled=false;
+  $('exportBox').style.display='block';
+  status('Clip YouTube masuk editor.',100);
+  log(`Editor YouTube: ${item.file.name}`);
+}
+
+async function ensureTranscriptOnly(){
+  if(transcript.length) return transcript;
+  if(!file) throw new Error('Pilih video terlebih dahulu.');
+  $('manualScriptCutBtn').disabled=true;
+  try{
+    status('Menyiapkan transcript untuk script cut…',10);
+    const audio=await decodeAudio16k(file);
+    const pipe=await loadWhisper();
+    status('Whisper mentranskripsi video…',45);
+    const out=await pipe(audio,{language:'indonesian',task:'transcribe',return_timestamps:true,chunk_length_s:30,stride_length_s:5});
+    transcript=(out.chunks||[]).map(x=>({
+      start:Number(x.timestamp?.[0]||0),
+      end:Number(x.timestamp?.[1]??x.timestamp?.[0]??0)+0.01,
+      text:String(x.text||'').trim()
+    })).filter(x=>x.text);
+    if(!transcript.length && out.text){
+      transcript=[{start:0,end:video.duration||30,text:out.text.trim()}];
+    }
+    $('manualScriptStatus').textContent=`Transcript siap: ${transcript.length} segmen`;
+    status('Transcript siap.',100);
+    return transcript;
+  }finally{
+    $('manualScriptCutBtn').disabled=false;
+  }
+}
+
+$('manualTimeCutBtn').onclick=()=>{
+  try{
+    if(!file) throw new Error('Pilih video terlebih dahulu.');
+    const start=readTypedTime('startMinute','startSecond');
+    const end=readTypedTime('endMinute','endSecond');
+    if(Number.isNaN(start)||Number.isNaN(end)){
+      throw new Error('Nilai waktu tidak valid. Detik harus berada pada 0–59 dan semua field harus berupa angka bulat.');
+    }
+    if(start<0 || end>video.duration+0.05){
+      throw new Error(`Waktu berada di luar durasi video (${fmtTime(video.duration)}).`);
+    }
+    if(end-start<0.5){
+      throw new Error('Durasi clip terlalu pendek. Gunakan minimal 0,5 detik.');
+    }
+    const sel=buildSelection(start,end,'Manual Cut','Dipilih manual berdasarkan waktu awal dan akhir');
+    applySelection(sel);
+    $('manualTimeStatus').textContent=`${fmtTime(start)} → ${fmtTime(end)}`;
+    status('Manual cut siap.',100);
+  }catch(e){
+    alert(e.message||e);
+  }
+};
+
+$('manualScriptCutBtn').onclick=async()=>{
+  try{
+    if(!file) throw new Error('Pilih video terlebih dahulu.');
+    const query=$('scriptQueryTop').value.trim();
+    if(!query) throw new Error('Masukkan script atau kalimat terlebih dahulu.');
+    $('manualScriptStatus').textContent='Menyiapkan transcript…';
+    await ensureTranscriptOnly();
+    const sel=findSelectionFromScript(query);
+    applySelection(sel);
+    $('manualScriptStatus').textContent=`Ditemukan: ${fmtTime(sel.start)} → ${fmtTime(sel.end)}`;
+    status('Script cut siap.',100);
+  }catch(e){
+    $('manualScriptStatus').textContent='Gagal';
+    alert(e.message||e);
+  }
+};
+
+$('analyzeBtn').onclick=async()=>{
+  if(!file)return;
+  $('analyzeBtn').disabled=true;resetAnalysis();$('detailEmpty').textContent='Sedang menganalisis…';
+  try{
+    const audio=await decodeAudio16k(file);
+    const pipe=await loadWhisper();
+    status('Whisper mentranskripsi video…',42);log('Transkripsi dimulai. Waktu proses tergantung durasi video dan GPU/CPU.');
+    const out=await pipe(audio,{language:'indonesian',task:'transcribe',return_timestamps:true,chunk_length_s:30,stride_length_s:5});
+    status('Menyusun timestamp…',78);
+    transcript=(out.chunks||[]).map(x=>({start:Number(x.timestamp?.[0]||0),end:Number(x.timestamp?.[1]??x.timestamp?.[0]??0)+0.01,text:String(x.text||'').trim()})).filter(x=>x.text);
+    if(!transcript.length && out.text) transcript=[{start:0,end:video.duration||30,text:out.text.trim()}];
+    log(`Transcript: ${transcript.length} segmen.`);
+    status('Menilai potensi viral…',88);
+    candidates=makeCandidates(transcript);
+    renderResults();
+    status(`Selesai — ${candidates.length} kandidat ditemukan.`,100);
+    log('Analisis selesai.');
+  }catch(e){
+    console.error(e);status('Gagal.',0);log('ERROR: '+(e?.message||e));alert(e?.message||String(e));
+    $('detailEmpty').textContent='Analisis gagal. Lihat log di sebelah kiri.';
+  }finally{$('analyzeBtn').disabled=false;}
+};
+
+$('previewBtn').onclick=async()=>{
+  if(!selected||!file)return;
+  if(previewTimer)clearInterval(previewTimer);
+  video.currentTime=selected.start;
+  await video.play();
+  previewTimer=setInterval(()=>{if(video.currentTime>=selected.end||video.paused){video.pause();clearInterval(previewTimer);previewTimer=null;}},100);
+};
+
+function supportedMime(){
+  const types=[
+    ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','mp4'],
+    ['video/webm;codecs=vp9,opus','webm'],
+    ['video/webm;codecs=vp8,opus','webm'],
+    ['video/webm','webm']
+  ];
+  for(const [mime,ext] of types) if(window.MediaRecorder&&MediaRecorder.isTypeSupported(mime)) return {mime,ext};
+  return {mime:'',ext:'webm'};
+}
+const sf=supportedMime();$('exportFmt').textContent=`Output browser: ${sf.ext.toUpperCase()}`;
+
+$('bgBtn').onclick=()=>$('bgInput').click();
+$('bgInput').onchange=async e=>{
+  const f=e.target.files?.[0];
+  if(!f)return;
+  if(bgObjectUrl)URL.revokeObjectURL(bgObjectUrl);
+  bgObjectUrl=URL.createObjectURL(f);
+  bgImage=new Image();
+  bgImage.src=bgObjectUrl;
+  await new Promise((res,rej)=>{bgImage.onload=res;bgImage.onerror=rej});
+  $('bgStatus').textContent='✓ '+f.name;
+  drawTemplatePreview();
+};
+$('videoY').oninput=()=>{$('videoYVal').textContent=$('videoY').value+'%';drawTemplatePreview()};
+$('videoH').oninput=()=>{$('videoHVal').textContent=$('videoH').value+'%';drawTemplatePreview()};
+['headline1','headline2','clipTemplate','subtitle'].forEach(id=>{
+  $(id).addEventListener('input',drawTemplatePreview);
+  $(id).addEventListener('change',drawTemplatePreview);
+});
+$('templatePreviewBtn').onclick=()=>{
+  $('previewFrame').style.display='block';
+  drawTemplatePreview();
+};
+
+
+
+$('outroBtn').onclick=()=>$('outroInput').click();
+$('outroInput').onchange=async e=>{
+  const f=e.target.files?.[0];
+  if(!f)return;
+  outroFile=f;
+  if(outroObjectUrl) URL.revokeObjectURL(outroObjectUrl);
+  outroObjectUrl=URL.createObjectURL(f);
+  outroVideo.src=outroObjectUrl;
+  await new Promise((res,rej)=>{outroVideo.onloadedmetadata=res;outroVideo.onerror=rej});
+  $('outroStatus').textContent=`Outro: ${f.name}`;
+};
+
+function dimensions(ratio,vw,vh){
+  if(ratio==='9:16')return [720,1280];
+  if(ratio==='4:5')return [864,1080];
+  if(ratio==='1:1')return [1080,1080];
+  if(ratio==='16:9')return [1280,720];
+  const max=1280,scale=Math.min(1,max/Math.max(vw,vh));return [Math.round(vw*scale),Math.round(vh*scale)];
+}
+function drawCoverRect(ctx,src,x,y,w,h){
+  const sw0=src.videoWidth||src.naturalWidth||src.width;
+  const sh0=src.videoHeight||src.naturalHeight||src.height;
+  if(!sw0||!sh0)return;
+  const sa=sw0/sh0,ca=w/h;let sx=0,sy=0,sw=sw0,sh=sh0;
+  if(sa>ca){sw=sh0*ca;sx=(sw0-sw)/2}else{sh=sw0/ca;sy=(sh0-sh)/2}
+  ctx.drawImage(src,sx,sy,sw,sh,x,y,w,h);
+}
+function drawCover(ctx,v,w,h){drawCoverRect(ctx,v,0,0,w,h)}
+function wrapText(ctx,text,maxWidth,maxLines=3){
+  const words=text.split(/\s+/);const lines=[];let line='';
+  for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=word}else line=test}
+  if(line)lines.push(line);return lines.slice(0,maxLines);
+}
+function subtitleAt(t){
+  if(!selected)return'';const x=selected.chunks.find(c=>t>=c.start&&t<=c.end);return x?.text||'';
+}
+function drawDefaultBackground(ctx,w,h){
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'#090909');g.addColorStop(.55,'#111318');g.addColorStop(1,'#080a0e');
+  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+  ctx.globalAlpha=.12;ctx.strokeStyle='#fff';ctx.lineWidth=1;
+  for(let i=0;i<16;i++){ctx.beginPath();ctx.moveTo(w*.5,h*.35);ctx.lineTo((i/15)*w,h*.78);ctx.stroke()}
+  ctx.globalAlpha=1;
+}
+function drawHeadline(ctx,w,h){
+  const a=$('headline1').value.trim(),b=$('headline2').value.trim();
+  if(!a&&!b)return;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font=`900 ${Math.round(w*.11)}px Arial Black, Arial`;
+  ctx.strokeStyle='#000';ctx.lineWidth=Math.max(4,w*.008);ctx.fillStyle='#fff';
+  const y1=h*.10;
+  if(a){ctx.strokeText(a,w/2,y1);ctx.fillText(a,w/2,y1)}
+  ctx.font=`900 ${Math.round(w*.12)}px Arial Black, Arial`;
+  ctx.fillStyle='#20ff57';
+  const y2=h*.19;
+  if(b){ctx.strokeText(b,w/2,y2);ctx.fillText(b,w/2,y2)}
+}
+function drawEditorial(ctx,w,h,posterOnly=false,forPreview=false){
+  if(bgImage)drawCoverRect(ctx,bgImage,0,0,w,h); else drawDefaultBackground(ctx,w,h);
+  drawHeadline(ctx,w,h);
+  if(posterOnly)return;
+  const y=h*(Number($('videoY').value)/100);
+  const vh=h*(Number($('videoH').value)/100);
+  const x=0,vw=w;
+  ctx.fillStyle='#000';ctx.fillRect(x,y,vw,vh);
+  if(video.readyState>=2)drawCoverRect(ctx,video,x,y,vw,vh);
+  ctx.strokeStyle='rgba(255,255,255,.10)';ctx.lineWidth=1;ctx.strokeRect(x,y,vw,vh);
+  if($('subtitle').value==='on' && selected){
+    const t=forPreview?selected.start+Math.min(2,(selected.end-selected.start)/2):video.currentTime;
+    const s=subtitleAt(t);
+    if(s){
+      ctx.font=`800 ${Math.max(28,Math.round(w/28))}px Arial`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      const lines=wrapText(ctx,s,w*.78,2),lh=Math.round(w/24),boxH=lines.length*lh+24,cy=y+vh*.55;
+      ctx.fillStyle='rgba(0,0,0,.62)';ctx.fillRect(w*.1,cy-boxH/2,w*.8,boxH);
+      ctx.strokeStyle='#000';ctx.lineWidth=5;ctx.fillStyle='#fff';
+      lines.forEach((ln,i)=>{const yy=cy-(lines.length-1)*lh/2+i*lh;ctx.strokeText(ln,w/2,yy);ctx.fillText(ln,w/2,yy)});
+    }
+  }
+}
+function drawTemplatePreview(){
+  if(!$('templatePreview'))return;
+  const c=$('templatePreview'),ctx=c.getContext('2d'),w=c.width,h=c.height;
+  ctx.clearRect(0,0,w,h);
+  if($('clipTemplate').value==='editorial')drawEditorial(ctx,w,h,false,true);
+  else{
+    ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+    if(video.readyState>=2)drawCover(ctx,video,w,h);
+  }
+}
+
+
+async function playCustomPreview(){
+  if(!selected){ alert('Pilih kandidat atau buat manual cut terlebih dahulu.'); return; }
+  $('previewFrame').style.display='block';
+  const canvas=$('templatePreview'),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
+
+  if(customPreviewTimer){ cancelAnimationFrame(customPreviewTimer); customPreviewTimer=null; }
+  try{ await ensureSharedAudioGraph(); }catch(e){ console.warn('Audio preview fallback:', e); }
+
+  try{ video.pause(); outroVideo.pause(); }catch(e){}
+
+  const template=$('clipTemplate').value;
+  const start=selected.start,end=selected.end;
+  let phase='intro';
+  const introSecs=Number($('introPoster').value||0);
+  const posterOutroSecs=Number($('outroPoster').value||0);
+  let phaseStart=performance.now();
+
+  video.currentTime=start;
+  await new Promise(r=>video.onseeked=r);
+
+  const drawFrame=()=>{
+    if(template==='editorial'){
+      if(phase==='intro' || phase==='posterOutro'){
+        drawEditorial(ctx,w,h,true,false);
+      }else if(phase==='main'){
+        drawEditorial(ctx,w,h,false,false);
+      }else if(phase==='fileOutro'){
+        ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+        if(outroVideo.readyState>=2) drawCover(ctx,outroVideo,w,h);
+      }
+    }else{
+      ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+      if(phase==='main' && video.readyState>=2) drawCover(ctx,video,w,h);
+      else if(phase==='fileOutro' && outroVideo.readyState>=2) drawCover(ctx,outroVideo,w,h);
+    }
+  };
+
+  const switchToMain=async()=>{
+    phase='main'; phaseStart=performance.now();
+    video.currentTime=start;
+    await video.play().catch(()=>{});
+  };
+
+  if(introSecs<=0) await switchToMain();
+
+  const loop=async()=>{
+    drawFrame();
+
+    if(phase==='intro'){
+      if((performance.now()-phaseStart)/1000>=introSecs){
+        await switchToMain();
+      }
+    }else if(phase==='main'){
+      if(video.currentTime>=end || video.ended){
+        video.pause();
+        if(posterOutroSecs>0){
+          phase='posterOutro'; phaseStart=performance.now();
+        }else if(outroFile){
+          phase='fileOutro'; phaseStart=performance.now();
+          outroVideo.currentTime=0;
+          await outroVideo.play().catch(()=>{});
+        }else{
+          phase='done';
+        }
+      }
+    }else if(phase==='posterOutro'){
+      if((performance.now()-phaseStart)/1000>=posterOutroSecs){
+        if(outroFile){
+          phase='fileOutro'; phaseStart=performance.now();
+          outroVideo.currentTime=0;
+          await outroVideo.play().catch(()=>{});
+        }else phase='done';
+      }
+    }else if(phase==='fileOutro'){
+      if(outroVideo.ended){
+        outroVideo.pause();
+        phase='done';
+      }
+    }else if(phase==='done'){
+      return;
+    }
+
+    customPreviewTimer=requestAnimationFrame(loop);
+  };
+  loop();
+}
+$('previewCustomBtn').onclick=()=>playCustomPreview();
+
+async function renderPosterPhase(ctx,w,h,seconds){
+  if(seconds<=0)return;
+  const start=performance.now();
+  return new Promise(resolve=>{
+    const frame=()=>{
+      if($('clipTemplate').value==='editorial')drawEditorial(ctx,w,h,true,false);
+      else{ctx.fillStyle='#000';ctx.fillRect(0,0,w,h); if(video.readyState>=2)drawCover(ctx,video,w,h)}
+      if(performance.now()-start>=seconds*1000)return resolve();
+      requestAnimationFrame(frame);
+    };frame();
+  });
+}
+
+$('exportBtn').onclick=async()=>{
+  if(!selected||!file)return;
+  if(!video.captureStream || !HTMLCanvasElement.prototype.captureStream || !window.MediaRecorder){
+    return alert('Browser ini belum mendukung export lokal. Gunakan Chrome/Edge terbaru.');
+  }
+  $('exportBtn').disabled=true;
+  try{
+    $('exportTitle').value=sanitizeFileName($('exportTitle').value);
+    const template=$('clipTemplate').value,sub=$('subtitle').value==='on';
+    applyAudioProfile();
+    log(`Audio export: ${$('audioProfile').selectedOptions[0]?.textContent || $('audioProfile').value}`);
+    let ratio=$('ratio').value;
+    if(template==='editorial')ratio='9:16';
+    const [w,h]=template==='editorial'?[1080,1920]:dimensions(ratio,video.videoWidth,video.videoHeight);
+    const canvas=$('renderCanvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');
+    const canvasStream=canvas.captureStream(30);
+
+    const sharedStream=await ensureSharedAudioGraph();
+    sharedStream.getAudioTracks().forEach(t=>canvasStream.addTrack(t));
+
+    const fmt=supportedMime();
+    const recorderOptions=fmt.mime?{
+      mimeType:fmt.mime,
+      videoBitsPerSecond:7_000_000,
+      audioBitsPerSecond:192_000
+    }:{audioBitsPerSecond:192_000};
+    const rec=new MediaRecorder(canvasStream,recorderOptions);
+    const blobs=[];rec.ondataavailable=e=>{if(e.data.size)blobs.push(e.data)};
+    const done=new Promise((res,rej)=>{rec.onstop=res;rec.onerror=e=>rej(e.error||e)});
+    rec.start(1000);
+
+    const intro=Number($('introPoster').value||0),posterOutro=Number($('outroPoster').value||0);
+
+    if(intro>0){status('Membuat intro poster…',3);await renderPosterPhase(ctx,w,h,intro)}
+
+    video.currentTime=selected.start;
+    await new Promise(r=>video.onseeked=r);
+    await video.play();
+    status('Merekam clip utama…',10);
+    const start=selected.start,end=selected.end;
+
+    await new Promise(resolve=>{
+      const draw=()=>{
+        if(video.ended||video.currentTime>=end){
+          video.pause();return resolve();
+        }
+        ctx.clearRect(0,0,w,h);
+        if(template==='editorial'){
+          drawEditorial(ctx,w,h,false,false);
+        }else{
+          ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);drawCover(ctx,video,w,h);
+          if(sub){
+            const s=subtitleAt(video.currentTime);
+            if(s){
+              ctx.font=`700 ${Math.max(22,Math.round(w/26))}px Arial`;
+              ctx.textAlign='center';ctx.textBaseline='middle';
+              const lines=wrapText(ctx,s,w*.82,3),lh=Math.round(w/22),boxH=lines.length*lh+30,cy=h-Math.max(85,h*.10);
+              ctx.fillStyle='rgba(0,0,0,.62)';ctx.fillRect(w*.07,cy-boxH/2,w*.86,boxH);
+              ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.lineWidth=4;
+              lines.forEach((ln,i)=>{const yy=cy-(lines.length-1)*lh/2+i*lh;ctx.strokeText(ln,w/2,yy);ctx.fillText(ln,w/2,yy)});
+            }
+          }
+        }
+        const p=(video.currentTime-start)/(end-start)*70+10;status('Merekam clip utama…',Math.min(80,p));
+        requestAnimationFrame(draw);
+      };draw();
+    });
+
+    if(posterOutro>0){status('Membuat poster outro…',84);await renderPosterPhase(ctx,w,h,posterOutro)}
+
+    if(outroFile){
+      status('Menambahkan file outro…',90);
+      outroVideo.currentTime=0;
+      await new Promise(r=>outroVideo.onseeked=r);
+      await outroVideo.play();
+      await new Promise(resolve=>{
+        const draw=()=>{
+          if(outroVideo.ended||outroVideo.paused){
+            outroVideo.pause(); return resolve();
+          }
+          ctx.clearRect(0,0,w,h);
+          if(template==='editorial'){
+            ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+            drawCover(ctx,outroVideo,w,h);
+          }else{
+            ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+            drawCover(ctx,outroVideo,w,h);
+          }
+          requestAnimationFrame(draw);
+        };draw();
+      });
+    }
+
+    if(rec.state!=='inactive')rec.stop();
+    await done;
+
+    const blob=new Blob(blobs,{type:fmt.mime||'video/webm'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    const safeTitle=sanitizeFileName($('exportTitle').value);
+    $('exportTitle').value=safeTitle;
+    a.href=url;a.download=`${safeTitle}.${fmt.ext}`;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    status('Export selesai.',100);
+  }catch(e){
+    console.error(e);alert('Export gagal: '+(e?.message||e));status('Export gagal.',0);
+  }finally{
+    try{video.pause();outroVideo.pause();}catch(e){}
+    $('exportBtn').disabled=false;
+  }
+};
+
+$('exportTitle').addEventListener('input',()=>{
+  exportTitleUserEdited=true;
+});
+$('exportTitle').addEventListener('blur',()=>{
+  $('exportTitle').value=sanitizeFileName($('exportTitle').value);
+});
+if(location.protocol==='file:'){
+  document.body.innerHTML=`<div style="max-width:720px;margin:80px auto;padding:24px;font:16px Arial;background:#111722;color:#fff;border-radius:18px">
+    <h1>AI Clipper v1.5.0</h1>
+    <p>Versi Simple Direct berjalan melalui halaman web agar koneksi ke Connector stabil.</p>
+    <p><b>Klik icon AI Clipper Connector → Buka AI Clipper.</b></p>
+  </div>`;
+}else{
+  setSourceMode('local');
+  setTimeout(checkYouTubeBridge,400);
+}
+const gpu=!!navigator.gpu;
+$('compat').textContent=gpu?'✓ WebGPU tersedia':'CPU/WASM mode';
+if(!window.MediaRecorder) $('compat').textContent+=' • Export tidak didukung';
+</script>
 </body>
 </html>
