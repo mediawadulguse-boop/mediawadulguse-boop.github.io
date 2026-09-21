@@ -130,12 +130,25 @@ $('ytFetchBtn').onclick=async()=>{
 };
 $('ytAnalyzeBtn').onclick=()=>{
   if(!transcript.length) return alert('Ambil transcript terlebih dahulu.');
-  status('Menganalisis potensi viral…',55);
-  candidates=makeCandidates(transcript);
-  ytBatchSelected.clear();
-  renderResults();
-  status(`Selesai — ${candidates.length} kandidat viral.`,100);
-  log(`Analisis YouTube: ${candidates.length} kandidat.`);
+  $('ytAnalyzeBtn').disabled=true;
+  try{
+    status('Menganalisis potensi viral…',55);
+    if(typeof makeCandidates!=='function') throw new Error('Engine kandidat viral belum termuat.');
+    candidates=makeCandidates(transcript);
+    ytBatchSelected.clear();
+    if(typeof renderResults!=='function') throw new Error('Renderer kandidat viral belum termuat.');
+    renderResults();
+    status(`Selesai — ${candidates.length} kandidat viral.`,100);
+    log(`Analisis YouTube: ${candidates.length} kandidat.`);
+    if(!candidates.length) log('Tidak ada kandidat yang lolos filter durasi/teks.');
+  }catch(e){
+    console.error(e);
+    status('Analisis viral gagal.',0);
+    log('VIRAL ENGINE ERROR: '+(e?.message||e));
+    alert('Analisis viral gagal: '+(e?.message||e));
+  }finally{
+    $('ytAnalyzeBtn').disabled=false;
+  }
 };
 
 function parseManualTranscript(raw){
