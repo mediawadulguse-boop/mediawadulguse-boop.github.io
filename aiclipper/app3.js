@@ -117,7 +117,8 @@ $('ytFetchBtn').onclick=async()=>{
   try{
     const r=await bridgeRequest('YT_FETCH_TRANSCRIPT',{videoId:id},60000);
     if(!r.segments?.length) throw new Error('Transcript kosong.');
-    transcript=r.segments.map(x=>({start:Number(x.start||0),end:Number(x.end||0),text:String(x.text||'').trim()})).filter(x=>x.text);\n    refreshTranscriptPanel();
+    transcript=r.segments.map(x=>({start:Number(x.start||0),end:Number(x.end||0),text:String(x.text||'').trim()})).filter(x=>x.text);
+    refreshTranscriptPanel();
     showYTMeta(r.metadata,transcript,r.language||'');
     $('ytAnalyzeBtn').disabled=false;
     status(`Transcript siap — ${transcript.length} segmen.`,100);
