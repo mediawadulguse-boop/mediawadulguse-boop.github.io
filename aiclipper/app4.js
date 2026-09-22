@@ -196,6 +196,7 @@ function renderBatchClips(){
 }
 async function loadYouTubeCapturedClip(item){
   await setFile(item.file);
+  video.style.display='block';
   transcript=item.selection.chunks?.length?item.selection.chunks:[{start:0,end:item.selection.end,text:item.selection.text||''}];
   candidates=[];
   sourceMode='youtube';
