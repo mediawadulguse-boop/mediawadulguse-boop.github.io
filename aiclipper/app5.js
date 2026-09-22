@@ -32,10 +32,10 @@ $('manualTimeCutBtn').onclick=()=>{
     const sourceDuration=sourceMode==='youtube'
       ? Number(ytMetadata?.duration||transcript.at(-1)?.end||0)
       : Number(video.duration||0);
-    const start=readTypedTime('startMinute','startSecond');
-    const end=readTypedTime('endMinute','endSecond');
+    const start=readTypedTime('startHour','startMinute','startSecond');
+    const end=readTypedTime('endHour','endMinute','endSecond');
     if(Number.isNaN(start)||Number.isNaN(end)){
-      throw new Error('Nilai waktu tidak valid. Detik harus berada pada 0–59 dan semua field harus berupa angka bulat.');
+      throw new Error('Nilai waktu tidak valid. Menit dan detik harus 0–59; jam, menit, dan detik harus berupa angka bulat.');
     }
     if(start<0 || (sourceDuration>0 && end>sourceDuration+0.05)){
       throw new Error(`Waktu berada di luar durasi video (${fmtTime(sourceDuration)}).`);
