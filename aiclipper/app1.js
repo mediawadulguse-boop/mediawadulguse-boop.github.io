@@ -119,27 +119,29 @@ async function ensureSharedAudioGraph(){
   return sharedAudioDest.stream;
 }
 
-function readTypedTime(minuteId, secondId){
+function readTypedTime(hourId, minuteId, secondId){
+  const hour=Number($(hourId).value);
   const minute=Number($(minuteId).value);
   const second=Number($(secondId).value);
-  if(!Number.isFinite(minute) || !Number.isFinite(second)) return NaN;
-  if(minute<0 || second<0 || second>59) return NaN;
-  if(!Number.isInteger(minute) || !Number.isInteger(second)) return NaN;
-  return minute*60+second;
+  if(!Number.isFinite(hour) || !Number.isFinite(minute) || !Number.isFinite(second)) return NaN;
+  if(hour<0 || minute<0 || minute>59 || second<0 || second>59) return NaN;
+  if(!Number.isInteger(hour) || !Number.isInteger(minute) || !Number.isInteger(second)) return NaN;
+  return hour*3600+minute*60+second;
 }
-function setTypedTime(minuteId, secondId, totalSeconds){
+function setTypedTime(hourId, minuteId, secondId, totalSeconds){
   const total=Math.max(0,Math.floor(Number(totalSeconds)||0));
-  $(minuteId).value=String(Math.floor(total/60));
+  $(hourId).value=String(Math.floor(total/3600));
+  $(minuteId).value=String(Math.floor((total%3600)/60));
   $(secondId).value=String(total%60);
 }
 function refreshManualTimeStatus(){
-  const start=readTypedTime('startMinute','startSecond');
-  const end=readTypedTime('endMinute','endSecond');
+  const start=readTypedTime('startHour','startMinute','startSecond');
+  const end=readTypedTime('endHour','endMinute','endSecond');
   if(Number.isNaN(start)||Number.isNaN(end)){
-    $('manualTimeStatus').textContent='Periksa nilai menit/detik';
+    $('manualTimeStatus').textContent='Periksa nilai jam/menit/detik';
     return;
   }
-  $('manualTimeStatus').textContent=`${fmtMinuteSecond(start)} → ${fmtMinuteSecond(end)}`;
+  $('manualTimeStatus').textContent=`${fmtTime(start)} → ${fmtTime(end)}`;
 }
 function tokenize(t){return (String(t||'').toLowerCase().match(/[\p{L}\p{N}%]+/gu)||[])}
 function countOverlap(text, words){
@@ -190,8 +192,8 @@ function applySelection(sel, clearActive=true){
   $('kHook').textContent=selected.hook;$('kCuriosity').textContent=selected.curiosity;$('kConflict').textContent=selected.conflict;$('kInfo').textContent=selected.information;
   $('detailTranscript').textContent=selected.text || '(Tidak ada transcript pada rentang ini)';
   if(clearActive) document.querySelectorAll('.result').forEach((e)=>e.classList.remove('active'));
-  setTypedTime('startMinute','startSecond',selected.start);
-  setTypedTime('endMinute','endSecond',selected.end);
+  setTypedTime('startHour','startMinute','startSecond',selected.start);
+  setTypedTime('endHour','endMinute','endSecond',selected.end);
   refreshManualTimeStatus();
   syncExportTitleFromSelection();
   drawTemplatePreview();
