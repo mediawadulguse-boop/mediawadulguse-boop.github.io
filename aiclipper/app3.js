@@ -185,7 +185,8 @@ function parseManualTranscript(raw){
 $('ytManualTranscriptBtn').onclick=()=>{
   const segs=parseManualTranscript($('ytManualTranscript').value);
   if(!segs.length)return alert('Transcript tidak dapat dibaca.');
-  transcript=segs;\n  refreshTranscriptPanel();
+  transcript=segs;
+  refreshTranscriptPanel();
   ytVideoId=extractYouTubeId($('ytUrl').value)||ytVideoId;
   showYTMeta({title:'Transcript Manual',channel:'-',duration:segs.at(-1)?.end||0},segs,'manual');
   $('ytAnalyzeBtn').disabled=false;
