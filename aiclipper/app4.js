@@ -75,188 +75,185 @@ function versionAtLeast(current,minimum){
   return true;
 }
 
-async function waitForYouTubeIframe(timeout=15000){
-  const started=Date.now();
-
-  // Pastikan player benar-benar dibuat.
-  if(!ytPlayer || !ytPlayerReady){
-    await ensureYouTubePlayer(ytVideoId);
-  }
-
-  while(Date.now()-started<timeout){
-    let iframe=$('ytPlayerHost')?.querySelector('iframe');
-
-    // YT.Player kadang mengganti host secara async; coba ambil iframe dari getIframe().
-    if(!iframe){
-      try{iframe=ytPlayer?.getIframe?.()||null;}catch(e){}
-    }
-
-    if(iframe?.contentWindow){
-      return iframe;
-    }
-
-    // Jika player object hilang/remount, buat ulang sekali.
-    if(!ytPlayer){
-      try{await ensureYouTubePlayer(ytVideoId);}catch(e){}
-    }
-
-    await wait(120);
-  }
-
-  throw new Error('Player YouTube belum siap setelah menunggu 15 detik. Coba ulangi Cut.');
-}
-
-async function rawCaptureRequest(sel,index,total){
-  const iframe=await waitForYouTubeIframe(15000);
-
+function getDisplayCaptureStream(captureTitle){
   return new Promise((resolve,reject)=>{
-    const requestId=`raw_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}`;
-    const timeoutMs=Math.max(30000,Math.ceil((Number(sel.end)-Number(sel.start)+25)*1000));
+    $('ytCaptureStage').style.display='block';
+    $('ytCaptureBanner').style.display='block';
+    $('ytCaptureBanner').innerHTML=`
+      <b>CAPTURE TAB BERSIH SIAP</b><br>
+      Klik tombol di bawah, lalu pilih tab <b>${escapeHtml(captureTitle||'AI CLIPPER CAPTURE')}</b>.<br>
+      Aktifkan <b>Bagikan audio tab / Share tab audio</b>.<br>
+      <button id="ytStartCleanCapture" class="btn good" type="button" style="margin-top:12px">Mulai Capture Bersih</button>
+    `;
+    $('ytCaptureClose').style.display='block';
+    $('ytCaptureBar').parentElement.style.display='block';
+    $('ytCaptureBar').style.width='0%';
 
-    const cleanup=()=>{
-      clearTimeout(timer);
-      window.removeEventListener('message',onMessage);
-    };
-    const onMessage=e=>{
-      if(e.source!==iframe.contentWindow || !e.data || e.data.source!=='AI_CLIPPER_RAW_RESULT' || e.data.requestId!==requestId) return;
-      cleanup();
-      if(!e.data.ok){
-        reject(new Error(e.data.error||'Raw capture gagal.'));
-        return;
-      }
-      if(!(e.data.blob instanceof Blob) || !e.data.blob.size){
-        reject(new Error('Raw capture menghasilkan file kosong.'));
-        return;
-      }
-      resolve(e.data);
-    };
-    const timer=setTimeout(()=>{
-      cleanup();
-      reject(new Error('Raw capture timeout.'));
-    },timeoutMs);
+    const btn=$('ytStartCleanCapture');
+    btn.onclick=async()=>{
+      btn.disabled=true;
+      try{
+        const stream=await navigator.mediaDevices.getDisplayMedia({
+          video:{displaySurface:'browser',frameRate:{ideal:30,max:60}},
+          audio:true,
+          selfBrowserSurface:'exclude',
+          surfaceSwitching:'exclude',
+          monitorTypeSurfaces:'exclude'
+        });
 
-    window.addEventListener('message',onMessage);
-    iframe.contentWindow.postMessage({
-      source:'AI_CLIPPER_RAW_CAPTURE',
-      type:'CAPTURE_SEGMENT',
-      requestId,
-      start:Number(sel.start||0),
-      end:Number(sel.end||0),
-      index,
-      total
-    },'*');
+        const vt=stream.getVideoTracks()[0];
+        const settings=vt?.getSettings?.()||{};
+        if(settings.displaySurface && settings.displaySurface!=='browser'){
+          stream.getTracks().forEach(t=>t.stop());
+          throw new Error('Pilih TAB YouTube Capture, bukan Window atau Entire Screen.');
+        }
+        if(!stream.getAudioTracks().length){
+          stream.getTracks().forEach(t=>t.stop());
+          throw new Error('Audio tab belum dibagikan. Ulangi dan aktifkan "Share tab audio / Bagikan audio tab".');
+        }
+        resolve(stream);
+      }catch(e){
+        btn.disabled=false;
+        reject(e);
+      }
+    };
   });
 }
 
-async function recordOneYouTubeSegment(sel,index,total){
-  status(`Raw Capture YouTube ${index+1}/${total}…`,Math.round(index/total*100));
+function cleanCaptureMime(){
+  const types=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  return types.find(x=>MediaRecorder.isTypeSupported(x))||'';
+}
 
-  let r=null,lastErr=null;
-  for(let attempt=1;attempt<=3;attempt++){
-    try{
-      r=await rawCaptureRequest(sel,index,total);
-      break;
-    }catch(e){
-      lastErr=e;
-      log(`Raw Capture retry ${attempt}/3: ${e?.message||e}`);
-      if(attempt<3){
-        try{await ensureYouTubePlayer(ytVideoId);}catch(err){}
-        await wait(700);
-      }
-    }
-  }
-  if(!r) throw lastErr || new Error('Raw Capture gagal.');
-  const blob=r.blob;
+async function recordCleanTabSegment(displayStream,sessionId,sel,index,total){
   const start=Number(sel.start||0),end=Number(sel.end||start);
   const dur=Math.max(.05,end-start);
-  const ext=(String(r.mime||blob.type).includes('mp4'))?'mp4':'webm';
-  const name=`YT_${String(index+1).padStart(2,'0')}_${fmtMinuteSecond(start).replace(':','-')}_${fmtMinuteSecond(end).replace(':','-')}.${ext}`;
-  const f=new File([blob],name,{type:r.mime||blob.type||'video/webm'});
+
+  status(`Capture Bersih ${index+1}/${total}…`,Math.round(index/total*100));
+  await bridgeRequest('YT_CLEAN_CAPTURE_SEEK',{sessionId,start},12000);
+
+  const chunks=[];
+  const mime=cleanCaptureMime();
+  const opts=mime
+    ? {mimeType:mime,videoBitsPerSecond:8_000_000,audioBitsPerSecond:192_000}
+    : {videoBitsPerSecond:8_000_000,audioBitsPerSecond:192_000};
+  const rec=new MediaRecorder(displayStream,opts);
+  rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+  const stopped=new Promise((res,rej)=>{rec.onstop=res;rec.onerror=e=>rej(e.error||e)});
+
+  let started=false;
+  const play=await bridgeRequest('YT_CLEAN_CAPTURE_PLAY',{sessionId},8000);
+  if(!play?.ok) throw new Error(play?.error||'Player capture tidak bisa diputar.');
+
+  const deadline=Date.now()+Math.max(45000,(dur+75)*1000);
+  while(Date.now()<deadline && !ytCaptureAbort){
+    const st=await bridgeRequest('YT_CLEAN_CAPTURE_STATUS',{sessionId},4000);
+    const t=Number(st?.currentTime||0);
+
+    if(!started && t>=Math.max(0,start-.04)){
+      rec.start(250);
+      started=true;
+    }
+
+    if(started){
+      const frac=Math.max(0,Math.min(1,(t-start)/Math.max(.01,dur)));
+      $('ytCaptureBar').style.width=`${((index+frac)/total)*100}%`;
+    }
+
+    if(t>=end || st?.ended){
+      break;
+    }
+
+    await wait(80);
+  }
+
+  try{await bridgeRequest('YT_CLEAN_CAPTURE_PAUSE',{sessionId},3000)}catch(e){}
+
+  if(!started){
+    throw new Error('Recorder tidak sempat mulai. Ulangi capture.');
+  }
+  if(rec.state!=='inactive')rec.stop();
+  await stopped;
+
+  if(ytCaptureAbort) throw new Error('Capture dibatalkan.');
+
+  const blob=new Blob(chunks,{type:mime||'video/webm'});
+  if(!blob.size) throw new Error('Capture menghasilkan file kosong.');
+
+  const name=`YT_${String(index+1).padStart(2,'0')}_${fmtMinuteSecond(start).replace(':','-')}_${fmtMinuteSecond(end).replace(':','-')}.webm`;
+  const f=new File([blob],name,{type:blob.type||'video/webm'});
   const shiftedChunks=(sel.chunks||[]).map(c=>({...c,start:Math.max(0,c.start-start),end:Math.max(.01,c.end-start)}));
   const editSel={...sel,start:0,end:dur,chunks:shiftedChunks,text:sel.text,title:sel.title};
   return {file:f,selection:editSel,sourceSelection:sel,url:URL.createObjectURL(blob)};
 }
 
-async function pingRawCapture(){
-  const iframe=$('ytPlayerHost').querySelector('iframe');
-  if(!iframe?.contentWindow) throw new Error('YouTube iframe belum siap.');
-  return new Promise((resolve,reject)=>{
-    const requestId=`ping_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const onMessage=e=>{
-      if(e.source!==iframe.contentWindow || !e.data || e.data.source!=='AI_CLIPPER_RAW_RESULT' || e.data.requestId!==requestId) return;
-      cleanup();
-      if(e.data.ok) resolve(e.data);
-      else reject(new Error(e.data.error||'RAW capture belum siap.'));
-    };
-    const timer=setTimeout(()=>{cleanup();reject(new Error('Connector RAW Capture tidak terdeteksi di iframe YouTube.'));},4000);
-    const cleanup=()=>{clearTimeout(timer);window.removeEventListener('message',onMessage);};
-    window.addEventListener('message',onMessage);
-    iframe.contentWindow.postMessage({
-      source:'AI_CLIPPER_RAW_CAPTURE',
-      type:'PING_RAW_CAPTURE',
-      requestId
-    },'*');
-  });
-}
+let activeCleanCaptureSession=null;
+let activeCleanCaptureStream=null;
 
 async function captureYouTubeSelections(selections,{loadFirst=false}={}){
   if(!ytVideoId)throw new Error('Video YouTube belum siap.');
-
-  status('Menyiapkan YouTube Player…',5);
-  try{
-    await ensureYouTubePlayer(ytVideoId);
-    await waitForYouTubeIframe(15000);
-  }catch(e){
-    throw new Error('Gagal menyiapkan YouTube Player: '+(e?.message||e));
-  }
+  if(!navigator.mediaDevices?.getDisplayMedia)throw new Error('Browser tidak mendukung tab capture.');
 
   const ping=await bridgeRequest('YT_BRIDGE_PING',{},5000);
-  if(!versionAtLeast(ping?.version,'1.5.3')){
-    throw new Error('Raw Stream Capture membutuhkan AI Clipper Connector v1.5.3 atau lebih baru.');
-  }
-  const raw=await pingRawCapture();
-  if(!raw?.ready){
-    throw new Error('RAW video capture belum siap. Tunggu player YouTube selesai memuat lalu coba lagi.');
+  if(!versionAtLeast(ping?.version,'1.6.0')){
+    throw new Error('Metode Capture Bersih membutuhkan AI Clipper Connector v1.6.0 atau lebih baru.');
   }
 
-  $('ytCaptureStage').style.display='block';
-  $('ytCaptureBanner').style.display='block';
-  $('ytCaptureBanner').innerHTML='<b>RAW STREAM CAPTURE</b><br>Yang direkam hanya stream video asli — UI YouTube tidak ikut.';
-  $('ytCaptureBar').style.width='0%';
+  status('Menyiapkan tab capture bersih…',3);
+  const prep=await bridgeRequest('YT_PREPARE_CLEAN_CAPTURE',{
+    videoId:ytVideoId,
+    start:Number(selections[0]?.start||0)
+  },30000);
+
+  if(!prep?.sessionId) throw new Error('Connector tidak berhasil membuat tab capture.');
+
+  activeCleanCaptureSession=prep.sessionId;
   ytCaptureAbort=false;
 
+  let stream=null;
   try{
+    stream=await getDisplayCaptureStream(prep.captureTitle||'AI CLIPPER CAPTURE');
+    activeCleanCaptureStream=stream;
+
+    $('ytCaptureBanner').innerHTML='<b>CAPTURE BERSIH BERJALAN</b><br>UI YouTube sudah disembunyikan. Jangan tutup tab capture.';
+    $('ytCaptureClose').style.display='block';
+
     const outputs=[];
     for(let i=0;i<selections.length;i++){
       if(ytCaptureAbort)break;
-      const item=await recordOneYouTubeSegment(selections[i],i,selections.length);
+      const item=await recordCleanTabSegment(stream,prep.sessionId,selections[i],i,selections.length);
       outputs.push(item);
-      $('ytCaptureBar').style.width=`${Math.round(((i+1)/selections.length)*100)}%`;
     }
 
     ytBatchClips.push(...outputs);
     renderBatchClips();
-    status(`Raw Capture selesai — ${outputs.length} clip.`,100);
+    $('ytCaptureBar').style.width='100%';
+    status(`Capture Bersih selesai — ${outputs.length} clip.`,100);
 
     if(loadFirst && outputs[0]) await loadYouTubeCapturedClip(outputs[0]);
     return outputs;
   }finally{
-    try{ytPlayer.pauseVideo()}catch(e){}
+    if(stream)stream.getTracks().forEach(t=>t.stop());
+    activeCleanCaptureStream=null;
+    if(activeCleanCaptureSession){
+      try{await bridgeRequest('YT_CLOSE_CLEAN_CAPTURE',{sessionId:activeCleanCaptureSession},5000)}catch(e){}
+    }
+    activeCleanCaptureSession=null;
     $('ytCaptureStage').style.display='none';
     $('ytCaptureBanner').style.display='block';
     $('ytCaptureClose').style.display='block';
     $('ytCaptureBar').parentElement.style.display='block';
   }
 }
+
 $('ytCaptureClose').onclick=()=>{
   ytCaptureAbort=true;
-  try{
-    $('ytPlayerHost').querySelector('iframe')?.contentWindow?.postMessage({
-      source:'AI_CLIPPER_RAW_CAPTURE',
-      type:'CANCEL_CAPTURE'
-    },'*');
-  }catch(e){}
-  try{ytPlayer?.pauseVideo()}catch(e){}
+  if(activeCleanCaptureStream){
+    try{activeCleanCaptureStream.getTracks().forEach(t=>t.stop())}catch(e){}
+  }
+  if(activeCleanCaptureSession){
+    bridgeRequest('YT_CLOSE_CLEAN_CAPTURE',{sessionId:activeCleanCaptureSession},3000).catch(()=>{});
+  }
   $('ytCaptureStage').style.display='none';
 };
 $('ytCutBtn').onclick=async()=>{
