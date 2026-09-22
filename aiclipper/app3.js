@@ -18,6 +18,7 @@ function setSourceMode(mode){
   $('sourceYoutubeBtn').classList.toggle('active',!local);
   $('localSourcePanel').style.display=local?'block':'none';
   $('youtubeSourcePanel').style.display=local?'none':'block';
+  video.style.display=(local||file)?'block':'none';
   if(!local){
     setClipperMethod('ai');
     $('methodManual').disabled=false;
