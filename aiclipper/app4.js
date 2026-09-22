@@ -75,14 +75,41 @@ function versionAtLeast(current,minimum){
   return true;
 }
 
-function rawCaptureRequest(sel,index,total){
-  return new Promise((resolve,reject)=>{
-    const iframe=$('ytPlayerHost').querySelector('iframe');
-    if(!iframe?.contentWindow){
-      reject(new Error('YouTube iframe belum siap.'));
-      return;
+async function waitForYouTubeIframe(timeout=15000){
+  const started=Date.now();
+
+  // Pastikan player benar-benar dibuat.
+  if(!ytPlayer || !ytPlayerReady){
+    await ensureYouTubePlayer(ytVideoId);
+  }
+
+  while(Date.now()-started<timeout){
+    let iframe=$('ytPlayerHost')?.querySelector('iframe');
+
+    // YT.Player kadang mengganti host secara async; coba ambil iframe dari getIframe().
+    if(!iframe){
+      try{iframe=ytPlayer?.getIframe?.()||null;}catch(e){}
     }
 
+    if(iframe?.contentWindow){
+      return iframe;
+    }
+
+    // Jika player object hilang/remount, buat ulang sekali.
+    if(!ytPlayer){
+      try{await ensureYouTubePlayer(ytVideoId);}catch(e){}
+    }
+
+    await wait(120);
+  }
+
+  throw new Error('Player YouTube belum siap setelah menunggu 15 detik. Coba ulangi Cut.');
+}
+
+async function rawCaptureRequest(sel,index,total){
+  const iframe=await waitForYouTubeIframe(15000);
+
+  return new Promise((resolve,reject)=>{
     const requestId=`raw_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}`;
     const timeoutMs=Math.max(30000,Math.ceil((Number(sel.end)-Number(sel.start)+25)*1000));
 
@@ -124,7 +151,21 @@ function rawCaptureRequest(sel,index,total){
 async function recordOneYouTubeSegment(sel,index,total){
   status(`Raw Capture YouTube ${index+1}/${total}…`,Math.round(index/total*100));
 
-  const r=await rawCaptureRequest(sel,index,total);
+  let r=null,lastErr=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      r=await rawCaptureRequest(sel,index,total);
+      break;
+    }catch(e){
+      lastErr=e;
+      log(`Raw Capture retry ${attempt}/3: ${e?.message||e}`);
+      if(attempt<3){
+        try{await ensureYouTubePlayer(ytVideoId);}catch(err){}
+        await wait(700);
+      }
+    }
+  }
+  if(!r) throw lastErr || new Error('Raw Capture gagal.');
   const blob=r.blob;
   const start=Number(sel.start||0),end=Number(sel.end||start);
   const dur=Math.max(.05,end-start);
@@ -160,7 +201,14 @@ async function pingRawCapture(){
 
 async function captureYouTubeSelections(selections,{loadFirst=false}={}){
   if(!ytVideoId)throw new Error('Video YouTube belum siap.');
-  if(!ytPlayerReady)throw new Error('Player YouTube belum siap. Tunggu beberapa detik lalu coba lagi.');
+
+  status('Menyiapkan YouTube Player…',5);
+  try{
+    await ensureYouTubePlayer(ytVideoId);
+    await waitForYouTubeIframe(15000);
+  }catch(e){
+    throw new Error('Gagal menyiapkan YouTube Player: '+(e?.message||e));
+  }
 
   const ping=await bridgeRequest('YT_BRIDGE_PING',{},5000);
   if(!versionAtLeast(ping?.version,'1.5.3')){
