@@ -164,8 +164,12 @@ function scoreTextDims(text,dur){
   const score=clamp(hook*.25+curiosity*.20+conflict*.15+information*.15+emotion*.10+standalone*.15);
   return {hook,curiosity,conflict,information,emotion,standalone,score};
 }
-function buildSelection(start,end,title,reason,chunkSource){
-  start=Math.max(0,start||0); end=Math.min(video.duration||end,end||0);
+function buildSelection(start,end,title,reason,chunkSource,maxDuration=null){
+  start=Math.max(0,Number(start)||0);
+  end=Math.max(0,Number(end)||0);
+  const limit=Number(maxDuration);
+  if(Number.isFinite(limit) && limit>0) end=Math.min(limit,end);
+  else if(sourceMode==='local' && Number.isFinite(video.duration) && video.duration>0) end=Math.min(video.duration,end);
   if(end<=start) throw new Error('Waktu akhir harus lebih besar dari waktu awal.');
   const chunks = (chunkSource||transcript).filter(c=>c.end>=start && c.start<=end);
   const text = chunks.length ? chunks.map(c=>c.text).join(' ').replace(/\s+/g,' ').trim() : 'Manual cut';
@@ -174,11 +178,12 @@ function buildSelection(start,end,title,reason,chunkSource){
 }
 function applySelection(sel, clearActive=true){
   selected=sel;
+  const youtubeNeedsCapture=(sourceMode==='youtube' && !sel?.capturedClip);
   $('detailEmpty').style.display='none';$('detail').style.display='block';
-  $('exportBox').style.display=file?'block':'none';
-  $('previewBtn').disabled=!file;
-  $('previewBtn').style.display=file?'inline-block':'none';
-  $('ytCutBtn').style.display=(sourceMode==='youtube' && !file)?'inline-block':'none';
+  $('exportBox').style.display=(!youtubeNeedsCapture && file)?'block':'none';
+  $('previewBtn').disabled=(youtubeNeedsCapture || !file);
+  $('previewBtn').style.display=(!youtubeNeedsCapture && file)?'inline-block':'none';
+  $('ytCutBtn').style.display=youtubeNeedsCapture?'inline-block':'none';
   $('detailScore').textContent=`${selected.score}/100`;
   $('detailTime').textContent=`${fmtTime(selected.start)} → ${fmtTime(selected.end)} • ${Math.round(selected.end-selected.start)} detik`;
   $('detailTitle').textContent=selected.title;$('detailReason').textContent=selected.reason;
