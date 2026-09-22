@@ -43,7 +43,8 @@ $('manualTimeCutBtn').onclick=()=>{
     if(end-start<0.5){
       throw new Error('Durasi clip terlalu pendek. Gunakan minimal 0,5 detik.');
     }
-    const sel=buildSelection(start,end,'Manual Cut','Dipilih manual berdasarkan waktu awal dan akhir');
+    const sel=buildSelection(start,end,'Manual Cut','Dipilih manual berdasarkan waktu awal dan akhir',transcript,sourceDuration);
+    if(sourceMode==='youtube') sel.youtubeSource=true;
     applySelection(sel);
     $('manualTimeStatus').textContent=`${fmtTime(start)} → ${fmtTime(end)}`;
     status('Manual cut siap.',100);
@@ -61,6 +62,7 @@ $('manualScriptCutBtn').onclick=async()=>{
     $('manualScriptStatus').textContent='Menyiapkan transcript…';
     await ensureTranscriptOnly();
     const sel=findSelectionFromScript(query);
+    if(sourceMode==='youtube') sel.youtubeSource=true;
     applySelection(sel);
     $('manualScriptStatus').textContent=`Ditemukan: ${fmtTime(sel.start)} → ${fmtTime(sel.end)}${sel.matchConfidence?` • ${sel.matchConfidence}%`:''}`;
     status('Script cut siap.',100);
