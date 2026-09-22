@@ -136,6 +136,28 @@ async function recordOneYouTubeSegment(sel,index,total){
   return {file:f,selection:editSel,sourceSelection:sel,url:URL.createObjectURL(blob)};
 }
 
+async function pingRawCapture(){
+  const iframe=$('ytPlayerHost').querySelector('iframe');
+  if(!iframe?.contentWindow) throw new Error('YouTube iframe belum siap.');
+  return new Promise((resolve,reject)=>{
+    const requestId=`ping_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const onMessage=e=>{
+      if(e.source!==iframe.contentWindow || !e.data || e.data.source!=='AI_CLIPPER_RAW_RESULT' || e.data.requestId!==requestId) return;
+      cleanup();
+      if(e.data.ok) resolve(e.data);
+      else reject(new Error(e.data.error||'RAW capture belum siap.'));
+    };
+    const timer=setTimeout(()=>{cleanup();reject(new Error('Connector RAW Capture tidak terdeteksi di iframe YouTube.'));},4000);
+    const cleanup=()=>{clearTimeout(timer);window.removeEventListener('message',onMessage);};
+    window.addEventListener('message',onMessage);
+    iframe.contentWindow.postMessage({
+      source:'AI_CLIPPER_RAW_CAPTURE',
+      type:'PING_RAW_CAPTURE',
+      requestId
+    },'*');
+  });
+}
+
 async function captureYouTubeSelections(selections,{loadFirst=false}={}){
   if(!ytVideoId)throw new Error('Video YouTube belum siap.');
   if(!ytPlayerReady)throw new Error('Player YouTube belum siap. Tunggu beberapa detik lalu coba lagi.');
@@ -143,6 +165,10 @@ async function captureYouTubeSelections(selections,{loadFirst=false}={}){
   const ping=await bridgeRequest('YT_BRIDGE_PING',{},5000);
   if(!versionAtLeast(ping?.version,'1.5.3')){
     throw new Error('Raw Stream Capture membutuhkan AI Clipper Connector v1.5.3 atau lebih baru.');
+  }
+  const raw=await pingRawCapture();
+  if(!raw?.ready){
+    throw new Error('RAW video capture belum siap. Tunggu player YouTube selesai memuat lalu coba lagi.');
   }
 
   $('ytCaptureStage').style.display='block';
@@ -174,7 +200,17 @@ async function captureYouTubeSelections(selections,{loadFirst=false}={}){
     $('ytCaptureBar').parentElement.style.display='block';
   }
 }
-$('ytCaptureClose').onclick=()=>{ytCaptureAbort=true;try{ytPlayer?.pauseVideo()}catch(e){};$('ytCaptureStage').style.display='none';};
+$('ytCaptureClose').onclick=()=>{
+  ytCaptureAbort=true;
+  try{
+    $('ytPlayerHost').querySelector('iframe')?.contentWindow?.postMessage({
+      source:'AI_CLIPPER_RAW_CAPTURE',
+      type:'CANCEL_CAPTURE'
+    },'*');
+  }catch(e){}
+  try{ytPlayer?.pauseVideo()}catch(e){}
+  $('ytCaptureStage').style.display='none';
+};
 $('ytCutBtn').onclick=async()=>{
   if(!selected)return;
   try{await captureYouTubeSelections([selected],{loadFirst:true})}
