@@ -13,7 +13,7 @@ let ytBridgePending=new Map(), ytBridgeSeq=0;
 const video=$('video');
 const outroVideo=$('outroVideo');
 
-function log(msg){ $('log').textContent += ($('log').textContent?'\\n':'') + msg; $('log').scrollTop=$('log').scrollHeight; }
+function log(msg){ $('log').textContent += ($('log').textContent?'\n':'') + msg; $('log').scrollTop=$('log').scrollHeight; }
 function status(msg,p=null){ $('statusText').textContent=msg; if(p!==null){$('pct').textContent=Math.round(p)+'%';$('bar').style.width=Math.max(0,Math.min(100,p))+'%';} }
 function fmtTime(s){ s=Math.max(0,Math.round(s||0)); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return [h,m,ss].map(x=>String(x).padStart(2,'0')).join(':'); }
 function fmtMinuteSecond(s){
