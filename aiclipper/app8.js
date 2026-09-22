@@ -108,6 +108,7 @@ function renderResults(){
 function selectCandidate(i){
   const c=candidates[i];
   if(!c)return;
+  if(sourceMode==='youtube') c.youtubeSource=true;
   document.querySelectorAll('.result').forEach((e,j)=>e.classList.toggle('active',j===i));
   applySelection(c,false);
 }
