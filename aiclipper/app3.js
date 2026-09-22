@@ -20,10 +20,13 @@ function setSourceMode(mode){
   $('youtubeSourcePanel').style.display=local?'none':'block';
   if(!local){
     setClipperMethod('ai');
-    $('methodManual').disabled=true;
+    $('methodManual').disabled=false;
     $('model').closest('.controls').style.display='none';
     $('aiActionRow').style.display='none';
     $('manualActionRow').style.display='none';
+    $('manualScriptCutBtn').disabled=!transcript.length;
+    $('manualTimeCutBtn').disabled=!(Number(ytMetadata?.duration||0)>0);
+    $('manualScriptStatus').textContent=transcript.length?'Transcript siap':'Ambil transcript dulu';
     $('detailEmpty').textContent='Masukkan link YouTube lalu ambil transcript.';
     checkYouTubeBridge();
   }else{
@@ -121,6 +124,12 @@ $('ytFetchBtn').onclick=async()=>{
     refreshTranscriptPanel();
     showYTMeta(r.metadata,transcript,r.language||'');
     $('ytAnalyzeBtn').disabled=false;
+    $('manualScriptCutBtn').disabled=false;
+    $('manualTimeCutBtn').disabled=false;
+    $('manualScriptStatus').textContent='Transcript siap';
+    setTypedTime('startMinute','startSecond',0);
+    setTypedTime('endMinute','endSecond',Math.floor(Number(r.metadata?.duration||transcript.at(-1)?.end||0)));
+    refreshManualTimeStatus();
     status(`Transcript siap — ${transcript.length} segmen.`,100);
     log(`Transcript YouTube siap: ${transcript.length} segmen.`);
     ensureYouTubePlayer(id).catch(err=>log('Player: '+err.message));
@@ -187,6 +196,9 @@ $('ytManualTranscriptBtn').onclick=()=>{
   if(!segs.length)return alert('Transcript tidak dapat dibaca.');
   transcript=segs;
   refreshTranscriptPanel();
+  $('manualScriptCutBtn').disabled=false;
+  $('manualTimeCutBtn').disabled=false;
+  $('manualScriptStatus').textContent='Transcript siap';
   ytVideoId=extractYouTubeId($('ytUrl').value)||ytVideoId;
   showYTMeta({title:'Transcript Manual',channel:'-',duration:segs.at(-1)?.end||0},segs,'manual');
   $('ytAnalyzeBtn').disabled=false;
