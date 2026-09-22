@@ -190,58 +190,158 @@ function applySelection(sel, clearActive=true){
   syncExportTitleFromSelection();
   drawTemplatePreview();
 }
+function normalizeMatchText(text){
+  return tokenize(text).map(x=>x.toLowerCase()).join(' ');
+}
+const SCRIPT_STOPWORDS=new Set([
+  'yang','dan','di','ke','dari','ini','itu','ada','adalah','atau','untuk','dengan','pada','saya','kita',
+  'dia','mereka','nya','sebagai','jadi','juga','tidak','bukan','kalau','karena','tapi','tetapi','seperti',
+  'sudah','akan','bisa','lebih','oleh','dalam','sebuah','orang','pak','ya'
+]);
+function matchContentTokens(text){
+  const arr=Array.isArray(text)?text:tokenize(text);
+  const clean=arr.map(x=>String(x).toLowerCase()).filter(x=>x.length>2 && !SCRIPT_STOPWORDS.has(x));
+  return clean.length>=3?clean:arr.map(x=>String(x).toLowerCase()).filter(Boolean);
+}
+function multisetF1(a,b){
+  if(!a.length||!b.length)return 0;
+  const ca=new Map(),cb=new Map();
+  for(const x of a)ca.set(x,(ca.get(x)||0)+1);
+  for(const x of b)cb.set(x,(cb.get(x)||0)+1);
+  let common=0;
+  for(const [k,v] of ca)common+=Math.min(v,cb.get(k)||0);
+  if(!common)return 0;
+  const precision=common/b.length,recall=common/a.length;
+  return 2*precision*recall/(precision+recall);
+}
+function lcsCoverage(a,b){
+  if(!a.length||!b.length)return 0;
+  const aa=a.slice(0,600),bb=b.slice(0,800);
+  let prev=new Uint16Array(bb.length+1),cur=new Uint16Array(bb.length+1);
+  for(let i=1;i<=aa.length;i++){
+    cur.fill(0);
+    for(let j=1;j<=bb.length;j++){
+      cur[j]=aa[i-1]===bb[j-1]?prev[j-1]+1:Math.max(prev[j],cur[j-1]);
+    }
+    const t=prev;prev=cur;cur=t;
+  }
+  return prev[bb.length]/Math.max(1,aa.length);
+}
 function findSelectionFromScript(query){
   if(!transcript.length) throw new Error('Transcript belum ada. Jalankan transkripsi terlebih dahulu.');
-  const q=String(query||'').trim().toLowerCase();
-  const words=tokenize(q).filter(w=>w.length>2);
-  if(!words.length) throw new Error('Isi script / keyword terlebih dahulu.');
+  const raw=String(query||'').trim();
+  const qNorm=normalizeMatchText(raw);
+  const qAll=tokenize(raw).map(x=>x.toLowerCase());
+  if(qAll.length<3) throw new Error('Script terlalu pendek. Masukkan minimal beberapa kata yang khas.');
 
-  let best={score:-1,startIdx:0,endIdx:0};
+  const normChunks=transcript.map(c=>normalizeMatchText(c.text));
+  let full='',spans=[];
+  for(let i=0;i<normChunks.length;i++){
+    const n=normChunks[i];
+    if(!n)continue;
+    if(full)full+=' ';
+    const s=full.length;
+    full+=n;
+    spans.push({i,start:s,end:full.length});
+  }
+
+  const exactPos=full.indexOf(qNorm);
+  if(qNorm.length>=12 && exactPos>=0){
+    const exactEnd=exactPos+qNorm.length;
+    const sSpan=spans.find(x=>x.end>exactPos) || spans[0];
+    const eSpan=[...spans].reverse().find(x=>x.start<exactEnd) || spans[spans.length-1];
+    const startIdx=sSpan.i,endIdx=Math.max(sSpan.i,eSpan.i);
+    const chunkSet=transcript.slice(startIdx,endIdx+1);
+    const start=chunkSet[0].start,end=chunkSet.at(-1).end;
+    const joined=chunkSet.map(x=>x.text).join(' ').replace(/\s+/g,' ').trim();
+    const dims=scoreTextDims(joined,end-start);
+    return {
+      start,end,title:'Script Cut',
+      reason:'Cocok langsung dengan transcript • akurasi 100%',
+      text:joined,...dims,chunks:chunkSet,matchConfidence:100
+    };
+  }
+
+  const qContent=matchContentTokens(qAll);
+  const expectedDur=Math.max(8,Math.min(240,qAll.length/2.35));
+  const minDur=Math.max(5,expectedDur*.52);
+  const maxDur=Math.min(300,Math.max(35,expectedDur*1.75));
+  const prelim=[];
 
   for(let i=0;i<transcript.length;i++){
-    let joined='';
-    for(let j=i;j<Math.min(transcript.length,i+8);j++){
-      joined+=(joined?' ':'')+transcript[j].text;
-      const norm=joined.toLowerCase().replace(/\s+/g,' ').trim();
-      const wordHit=countOverlap(norm,words);
-      const phraseBonus=norm.includes(q)?Math.max(6,words.length):0;
-      const queryTokens=new Set(words);
-      const segTokens=new Set(tokenize(norm));
-      const union=new Set([...queryTokens,...segTokens]).size||1;
-      const inter=[...queryTokens].filter(x=>segTokens.has(x)).length;
-      const jaccard=inter/union;
-      const score=wordHit*3+phraseBonus+jaccard*10;
+    const start=Number(transcript[i]?.start||0);
+    let wordsAll=[],wordsContent=[];
+    for(let j=i;j<transcript.length;j++){
+      const ch=transcript[j];
+      const end=Number(ch?.end||start);
+      const dur=end-start;
+      if(dur>maxDur)break;
+      const t=tokenize(ch?.text||'').map(x=>x.toLowerCase());
+      wordsAll.push(...t);
+      wordsContent.push(...matchContentTokens(t));
+      if(dur<minDur)continue;
 
-      if(score>best.score){
-        best={score,startIdx:i,endIdx:j};
-      }
-
-      if((transcript[j].end-transcript[i].start)>70) break;
+      const bag=multisetF1(qContent,wordsContent);
+      if(bag<0.12)continue;
+      const lenPenalty=Math.abs(wordsAll.length-qAll.length)/Math.max(1,qAll.length);
+      const rough=bag-Math.min(.25,lenPenalty*.08);
+      prelim.push({i,j,start,end,wordsAll:[...wordsAll],wordsContent:[...wordsContent],bag,lenPenalty,rough});
+      prelim.sort((a,b)=>b.rough-a.rough);
+      if(prelim.length>28)prelim.length=28;
     }
   }
 
-  if(best.score<=0) throw new Error('Bagian script tidak ditemukan di transcript.');
+  if(!prelim.length) throw new Error('Script tidak ditemukan dengan kecocokan yang cukup di transcript.');
 
-  let startIdx=best.startIdx,endIdx=best.endIdx;
-  let start=transcript[startIdx].start,end=transcript[endIdx].end;
+  const firstAnchor=qContent.slice(0,Math.min(10,qContent.length));
+  const lastAnchor=qContent.slice(Math.max(0,qContent.length-10));
+  let best=null;
 
-  if(end-start<8){
-    if(startIdx>0){startIdx--;start=transcript[startIdx].start;}
-    while(end-start<12 && endIdx<transcript.length-1){
-      endIdx++;end=transcript[endIdx].end;
-    }
+  for(const c of prelim){
+    const ordered=lcsCoverage(qAll,c.wordsAll);
+    const startZone=c.wordsContent.slice(0,Math.max(20,firstAnchor.length*4));
+    const endZone=c.wordsContent.slice(-Math.max(20,lastAnchor.length*4));
+    const aStart=multisetF1(firstAnchor,startZone);
+    const aEnd=multisetF1(lastAnchor,endZone);
+    const score=c.bag*.48+ordered*.32+aStart*.10+aEnd*.10-Math.min(.12,c.lenPenalty*.04);
+    if(!best||score>best.score)best={...c,ordered,aStart,aEnd,score};
   }
 
+  if(!best || best.score<0.30){
+    const pct=Math.round((best?.score||0)*100);
+    throw new Error(`Kecocokan script terlalu rendah (${pct}%). Gunakan kalimat yang lebih sama dengan transcript atau pilih waktu manual.`);
+  }
+
+  let startIdx=best.i,endIdx=best.j;
+
+  // Refine titik awal menggunakan anchor awal.
+  let bestStartScore=-1;
+  for(let k=best.i;k<=Math.min(best.j,best.i+14);k++){
+    const local=[];
+    for(let z=k;z<=Math.min(best.j,k+5);z++)local.push(...matchContentTokens(tokenize(transcript[z]?.text||'')));
+    const sc=multisetF1(firstAnchor,local);
+    if(sc>bestStartScore){bestStartScore=sc;startIdx=k;}
+  }
+
+  // Refine titik akhir menggunakan anchor akhir.
+  let bestEndScore=-1;
+  for(let k=Math.max(startIdx,best.j-14);k<=best.j;k++){
+    const local=[];
+    for(let z=Math.max(startIdx,k-5);z<=k;z++)local.push(...matchContentTokens(tokenize(transcript[z]?.text||'')));
+    const sc=multisetF1(lastAnchor,local);
+    if(sc>bestEndScore){bestEndScore=sc;endIdx=k;}
+  }
+
+  if(endIdx<startIdx)endIdx=best.j;
   const chunkSet=transcript.slice(startIdx,endIdx+1);
+  const start=chunkSet[0].start,end=chunkSet.at(-1).end;
   const joined=chunkSet.map(x=>x.text).join(' ').replace(/\s+/g,' ').trim();
   const dims=scoreTextDims(joined,end-start);
+  const confidence=Math.max(1,Math.min(99,Math.round(best.score*100)));
 
   return {
-    start,end,
-    title:'Script Cut',
-    reason:'Dipilih otomatis dari script / keyword',
-    text:joined,
-    ...dims,
-    chunks:chunkSet
+    start,end,title:'Script Cut',
+    reason:`Pencocokan script berurutan • confidence ${confidence}%`,
+    text:joined,...dims,chunks:chunkSet,matchConfidence:confidence
   };
 }
