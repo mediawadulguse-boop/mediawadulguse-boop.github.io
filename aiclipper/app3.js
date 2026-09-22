@@ -128,8 +128,8 @@ $('ytFetchBtn').onclick=async()=>{
     $('manualScriptCutBtn').disabled=false;
     $('manualTimeCutBtn').disabled=false;
     $('manualScriptStatus').textContent='Transcript siap';
-    setTypedTime('startMinute','startSecond',0);
-    setTypedTime('endMinute','endSecond',Math.floor(Number(r.metadata?.duration||transcript.at(-1)?.end||0)));
+    setTypedTime('startHour','startMinute','startSecond',0);
+    setTypedTime('endHour','endMinute','endSecond',Math.floor(Number(r.metadata?.duration||transcript.at(-1)?.end||0)));
     refreshManualTimeStatus();
     status(`Transcript siap — ${transcript.length} segmen.`,100);
     log(`Transcript YouTube siap: ${transcript.length} segmen.`);
