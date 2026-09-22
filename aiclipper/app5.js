@@ -16,6 +16,7 @@ async function ensureTranscriptOnly(){
     if(!transcript.length && out.text){
       transcript=[{start:0,end:video.duration||30,text:out.text.trim()}];
     }
+    refreshTranscriptPanel();
     $('manualScriptStatus').textContent=`Transcript siap: ${transcript.length} segmen`;
     status('Transcript siap.',100);
     return transcript;
@@ -74,7 +75,8 @@ $('analyzeBtn').onclick=async()=>{
     const out=await pipe(audio,{language:'indonesian',task:'transcribe',return_timestamps:true,chunk_length_s:30,stride_length_s:5});
     status('Menyusun timestamp…',78);
     transcript=(out.chunks||[]).map(x=>({start:Number(x.timestamp?.[0]||0),end:Number(x.timestamp?.[1]??x.timestamp?.[0]??0)+0.01,text:String(x.text||'').trim()})).filter(x=>x.text);
-    if(!transcript.length && out.text) transcript=[{start:0,end:video.duration||30,text:out.text.trim()}];\n    refreshTranscriptPanel();
+    if(!transcript.length && out.text) transcript=[{start:0,end:video.duration||30,text:out.text.trim()}];
+    refreshTranscriptPanel();
     log(`Transcript: ${transcript.length} segmen.`);
     status('Menilai potensi viral…',88);
     candidates=makeCandidates(transcript);
