@@ -14,8 +14,8 @@ async function setFile(f){
   $('manualScriptCutBtn').disabled=false;
   $('manualTimeCutBtn').disabled=false;
   $('manualScriptStatus').textContent='Siap';
-  setTypedTime('startMinute','startSecond',0);
-  setTypedTime('endMinute','endSecond',Math.floor(video.duration||0));
+  setTypedTime('startHour','startMinute','startSecond',0);
+  setTypedTime('endHour','endMinute','endSecond',Math.floor(video.duration||0));
   refreshManualTimeStatus();
 
   $('detailEmpty').textContent='Video siap. Klik Analisis AI.';
@@ -41,8 +41,8 @@ function hardReset(){
   $('fileMeta').style.display='none'; $('analyzeBtn').disabled=true;
   $('manualScriptCutBtn').disabled=true; $('manualTimeCutBtn').disabled=true;
   $('manualScriptStatus').textContent='Video belum dipilih';
-  setTypedTime('startMinute','startSecond',0);
-  setTypedTime('endMinute','endSecond',0);
+  setTypedTime('startHour','startMinute','startSecond',0);
+  setTypedTime('endHour','endMinute','endSecond',0);
   refreshManualTimeStatus();
   video.removeAttribute('src');video.load();
   if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;
@@ -62,8 +62,8 @@ $('audioProfile').addEventListener('change',applyAudioProfile);
 $('resetBtn').onclick=hardReset;
 $('manualResetBtn').onclick=()=>{
   $('scriptQueryTop').value='';
-  setTypedTime('startMinute','startSecond',0);
-  setTypedTime('endMinute','endSecond',file?Math.floor(video.duration||0):0);
+  setTypedTime('startHour','startMinute','startSecond',0);
+  setTypedTime('endHour','endMinute','endSecond',file?Math.floor(video.duration||0):0);
   $('manualScriptStatus').textContent=file?'Siap':'Video belum dipilih';
   refreshManualTimeStatus();
 };
@@ -89,19 +89,14 @@ $('methodAI').onclick=()=>setClipperMethod('ai');
 $('methodManual').onclick=()=>setClipperMethod('manual');
 $('manualTabScript').onclick=()=>setManualMode('script');
 $('manualTabTime').onclick=()=>setManualMode('time');
-['startMinute','startSecond','endMinute','endSecond'].forEach(id=>{
+['startHour','startMinute','startSecond','endHour','endMinute','endSecond'].forEach(id=>{
   $(id).addEventListener('input',()=>{
     const el=$(id);
     if(el.value==='') el.value='0';
-    if(id.includes('Second')){
-      let v=Math.floor(Number(el.value)||0);
-      v=Math.max(0,Math.min(59,v));
-      el.value=String(v);
-    }else{
-      let v=Math.floor(Number(el.value)||0);
-      v=Math.max(0,v);
-      el.value=String(v);
-    }
+    let v=Math.floor(Number(el.value)||0);
+    if(id.includes('Minute') || id.includes('Second')) v=Math.max(0,Math.min(59,v));
+    else v=Math.max(0,v);
+    el.value=String(v);
     refreshManualTimeStatus();
   });
 });
