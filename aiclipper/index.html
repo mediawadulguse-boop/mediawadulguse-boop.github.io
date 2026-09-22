@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Clipper Local v1.5.4</title>
-<link rel="stylesheet" href="app.css?v=153">
+<title>AI Clipper Local v1.5.5</title>
+<link rel="stylesheet" href="app.css?v=155">
 </head>
 <body>
 <div class="app">
   <div class="top">
     <div class="brand">
-      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.5.4</span></h1>
+      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.5.5</span></h1>
       <p>Sistem sederhana • Web + Connector • File lokal + YouTube • AI viral clip</p>
     </div>
-    <div class="row"><div class="pill">v1.5.4 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
+    <div class="row"><div class="pill">v1.5.5 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
   </div>
 
   <div class="grid">
@@ -378,15 +378,22 @@
 </div>
 
 <canvas id="renderCanvas" hidden></canvas>
+<div id="runtimeErrorBanner" style="display:none;position:fixed;left:20px;right:20px;bottom:20px;z-index:999999;background:#4a1720;color:#fff;border:1px solid #ff667d;border-radius:12px;padding:12px 14px;font:13px Arial"></div>
+<script>
+window.addEventListener('error',function(e){
+  var b=document.getElementById('runtimeErrorBanner');
+  if(b){b.style.display='block';b.textContent='Error aplikasi: '+(e.message||'JavaScript gagal dimuat')+' — coba Ctrl+Shift+R.';}
+});
+</script>
 
-<script src="app1.js?v=153"></script>
-<script src="app2.js?v=153"></script>
-<script src="app3.js?v=153"></script>
-<script src="app4.js?v=153"></script>
-<script src="app5.js?v=153"></script>
-<script src="app6.js?v=153"></script>
-<script src="app7.js?v=153"></script>
-<script src="app8.js?v=153"></script>
-<script src="app9.js?v=153"></script>
+<script src="app1.js?v=155"></script>
+<script src="app2.js?v=155"></script>
+<script src="app3.js?v=155"></script>
+<script src="app4.js?v=155"></script>
+<script src="app5.js?v=155"></script>
+<script src="app6.js?v=155"></script>
+<script src="app7.js?v=155"></script>
+<script src="app8.js?v=155"></script>
+<script src="app9.js?v=155"></script>
 </body>
 </html>
