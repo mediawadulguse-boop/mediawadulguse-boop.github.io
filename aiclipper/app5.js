@@ -62,7 +62,7 @@ $('manualScriptCutBtn').onclick=async()=>{
     await ensureTranscriptOnly();
     const sel=findSelectionFromScript(query);
     applySelection(sel);
-    $('manualScriptStatus').textContent=`Ditemukan: ${fmtTime(sel.start)} → ${fmtTime(sel.end)}`;
+    $('manualScriptStatus').textContent=`Ditemukan: ${fmtTime(sel.start)} → ${fmtTime(sel.end)}${sel.matchConfidence?` • ${sel.matchConfidence}%`:''}`;
     status('Script cut siap.',100);
   }catch(e){
     $('manualScriptStatus').textContent='Gagal';
