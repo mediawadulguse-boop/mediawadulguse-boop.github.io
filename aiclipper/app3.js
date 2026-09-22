@@ -117,7 +117,7 @@ $('ytFetchBtn').onclick=async()=>{
   try{
     const r=await bridgeRequest('YT_FETCH_TRANSCRIPT',{videoId:id},60000);
     if(!r.segments?.length) throw new Error('Transcript kosong.');
-    transcript=r.segments.map(x=>({start:Number(x.start||0),end:Number(x.end||0),text:String(x.text||'').trim()})).filter(x=>x.text);
+    transcript=r.segments.map(x=>({start:Number(x.start||0),end:Number(x.end||0),text:String(x.text||'').trim()})).filter(x=>x.text);\n    refreshTranscriptPanel();
     showYTMeta(r.metadata,transcript,r.language||'');
     $('ytAnalyzeBtn').disabled=false;
     status(`Transcript siap — ${transcript.length} segmen.`,100);
@@ -184,7 +184,7 @@ function parseManualTranscript(raw){
 $('ytManualTranscriptBtn').onclick=()=>{
   const segs=parseManualTranscript($('ytManualTranscript').value);
   if(!segs.length)return alert('Transcript tidak dapat dibaca.');
-  transcript=segs;
+  transcript=segs;\n  refreshTranscriptPanel();
   ytVideoId=extractYouTubeId($('ytUrl').value)||ytVideoId;
   showYTMeta({title:'Transcript Manual',channel:'-',duration:segs.at(-1)?.end||0},segs,'manual');
   $('ytAnalyzeBtn').disabled=false;
