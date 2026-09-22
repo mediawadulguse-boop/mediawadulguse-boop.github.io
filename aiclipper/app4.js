@@ -132,6 +132,16 @@ async function captureYouTubeSelections(selections,{loadFirst=false}={}){
   $('ytCaptureBar').style.width='0%';
   ytCaptureAbort=false;
 
+  // Connector v1.5.2 membersihkan UI YouTube di dalam iframe:
+  // play/pause bezel, title, watermark, controls, caption, tooltip, spinner.
+  try{
+    await bridgeRequest('YT_CLEAN_PLAYER',{},5000);
+    log('Clean Capture: overlay YouTube disembunyikan.');
+  }catch(e){
+    $('ytCaptureStage').style.display='none';
+    throw new Error('Clean Capture membutuhkan AI Clipper Connector v1.5.2. Update Connector lalu coba lagi.');
+  }
+
   const stream=await navigator.mediaDevices.getDisplayMedia({
     video:{frameRate:{ideal:30,max:60}},
     audio:true,
