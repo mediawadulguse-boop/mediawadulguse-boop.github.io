@@ -177,6 +177,7 @@ function applySelection(sel, clearActive=true){
   $('detailEmpty').style.display='none';$('detail').style.display='block';
   $('exportBox').style.display=file?'block':'none';
   $('previewBtn').disabled=!file;
+  $('previewBtn').style.display=file?'inline-block':'none';
   $('ytCutBtn').style.display=(sourceMode==='youtube' && !file)?'inline-block':'none';
   $('detailScore').textContent=`${selected.score}/100`;
   $('detailTime').textContent=`${fmtTime(selected.start)} → ${fmtTime(selected.end)} • ${Math.round(selected.end-selected.start)} detik`;
