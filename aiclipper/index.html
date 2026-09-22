@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Clipper Local v1.5.2</title>
-<link rel="stylesheet" href="app.css?v=152">
+<title>AI Clipper Local v1.5.3</title>
+<link rel="stylesheet" href="app.css?v=153">
 </head>
 <body>
 <div class="app">
   <div class="top">
     <div class="brand">
-      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.5.2</span></h1>
+      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.5.3</span></h1>
       <p>Sistem sederhana • Web + Connector • File lokal + YouTube • AI viral clip</p>
     </div>
-    <div class="row"><div class="pill">v1.5.2 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
+    <div class="row"><div class="pill">v1.5.3 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
   </div>
 
   <div class="grid">
@@ -179,6 +179,22 @@
           </div>
           <div class="progress"><i id="bar"></i></div>
           <div class="log" id="log"></div>
+        </div>
+
+        <div class="transcript-tools" id="transcriptTools" style="display:none;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#0f151f">
+          <div class="row" style="justify-content:space-between;align-items:flex-start">
+            <div>
+              <h3 style="margin:0 0 4px">Transcript</h3>
+              <div class="tiny" id="transcriptMeta">0 segmen</div>
+            </div>
+            <div class="row">
+              <button class="btn" id="copyTranscriptBtn" type="button">Copy Transcript</button>
+              <button class="btn" id="downloadTranscriptTxtBtn" type="button">Download TXT</button>
+              <button class="btn" id="downloadTranscriptSrtBtn" type="button">Download SRT</button>
+            </div>
+          </div>
+          <textarea id="transcriptOutput" class="textarea" readonly style="margin-top:10px;min-height:220px;max-height:420px;font-family:Consolas,monospace;white-space:pre-wrap"></textarea>
+          <div class="tiny" id="transcriptActionStatus">Transcript siap untuk disalin atau diunduh.</div>
         </div>
 
         <div class="results">
@@ -363,13 +379,14 @@
 
 <canvas id="renderCanvas" hidden></canvas>
 
-<script src="app1.js?v=152"></script>
-<script src="app2.js?v=152"></script>
-<script src="app3.js?v=152"></script>
-<script src="app4.js?v=152"></script>
-<script src="app5.js?v=152"></script>
-<script src="app6.js?v=152"></script>
-<script src="app7.js?v=152"></script>
-<script src="app8.js?v=152"></script>
+<script src="app1.js?v=153"></script>
+<script src="app2.js?v=153"></script>
+<script src="app3.js?v=153"></script>
+<script src="app4.js?v=153"></script>
+<script src="app5.js?v=153"></script>
+<script src="app6.js?v=153"></script>
+<script src="app7.js?v=153"></script>
+<script src="app8.js?v=153"
+<script src="app9.js?v=153"></script>></script>
 </body>
 </html>
