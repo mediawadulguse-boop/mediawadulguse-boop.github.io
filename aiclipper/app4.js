@@ -26,9 +26,9 @@ async function ensureYouTubePlayer(id){
     ytPlayer=new YT.Player('ytPlayerHost',{
       videoId:id,
       width:'100%',height:'100%',
-      playerVars:{controls:0,rel:0,playsinline:1,fs:0,disablekb:1,iv_load_policy:3,modestbranding:1},
+      playerVars:{controls:0,rel:0,playsinline:1,fs:0,disablekb:1,iv_load_policy:3,modestbranding:1,cc_load_policy:0},
       events:{
-        onReady:()=>{ytPlayerReady=true;done=true;resolve();},
+        onReady:()=>{ytPlayerReady=true;try{disableYouTubeCaptions()}catch(e){}done=true;resolve();},
         onError:e=>{if(!done){done=true;reject(new Error('YouTube Player error '+e.data));}}
       }
     });
@@ -37,6 +37,21 @@ async function ensureYouTubePlayer(id){
   return ytPlayer;
 }
 function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+function disableYouTubeCaptions(){
+  try{ytPlayer?.setOption?.('captions','track',{});}catch(e){}
+  try{ytPlayer?.unloadModule?.('captions');}catch(e){}
+  try{ytPlayer?.unloadModule?.('cc');}catch(e){}
+}
+async function waitYTPlaying(timeout=6000){
+  const started=Date.now();
+  while(Date.now()-started<timeout){
+    try{
+      if(ytPlayer?.getPlayerState?.()===1) return true;
+    }catch(e){}
+    await wait(50);
+  }
+  return false;
+}
 async function waitYTTime(target,timeout=7000){
   const started=Date.now();
   while(Date.now()-started<timeout){
@@ -50,19 +65,26 @@ function ytCaptureMime(){
   return types.find(x=>MediaRecorder.isTypeSupported(x))||'';
 }
 async function recordOneYouTubeSegment(displayStream,sel,index,total){
-  const warmStart=Math.max(0,sel.start-1.5);
+  const start=Number(sel.start||0),end=Number(sel.end||start);
+  const warmStart=Math.max(0,start-1.25);
+
+  disableYouTubeCaptions();
   ytPlayer.pauseVideo();
   ytPlayer.seekTo(warmStart,true);
-  await wait(350);
+  await wait(300);
+  disableYouTubeCaptions();
   ytPlayer.playVideo();
-  const warmDeadline=Date.now()+6000;
-  while(Date.now()<warmDeadline && Number(ytPlayer.getCurrentTime()||0)<Math.max(warmStart,sel.start-.15)){
+
+  const playing=await waitYTPlaying(6000);
+  if(!playing) throw new Error('YouTube player tidak berhasil masuk mode playing.');
+
+  // Tunggu sampai mendekati titik awal sambil video tetap berjalan.
+  const warmDeadline=Date.now()+8000;
+  while(Date.now()<warmDeadline && Number(ytPlayer.getCurrentTime()||0)<Math.max(0,start-.06)){
     if(ytCaptureAbort) throw new Error('Capture dibatalkan.');
-    await wait(70);
+    disableYouTubeCaptions();
+    await wait(25);
   }
-  ytPlayer.pauseVideo();
-  ytPlayer.seekTo(sel.start,true);
-  await wait(250);
 
   const chunks=[];
   const mime=ytCaptureMime();
@@ -70,24 +92,30 @@ async function recordOneYouTubeSegment(displayStream,sel,index,total){
   const rec=new MediaRecorder(displayStream,opts);
   rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
   const done=new Promise((res,rej)=>{rec.onstop=res;rec.onerror=e=>rej(e.error||e)});
+
+  // UI capture tidak boleh ikut terekam.
   $('ytCaptureBanner').style.display='none';
   $('ytCaptureClose').style.display='none';
   $('ytCaptureBar').parentElement.style.display='none';
+
+  // Recorder dimulai saat player SUDAH playing agar tidak merekam tombol Play.
   rec.start(250);
-  ytPlayer.playVideo();
-  const start=sel.start,end=sel.end;
+
   while(!ytCaptureAbort && Number(ytPlayer.getCurrentTime())<end){
+    disableYouTubeCaptions();
     const cur=Number(ytPlayer.getCurrentTime()||start);
-    const frac=Math.max(0,Math.min(1,(cur-start)/(end-start)));
+    const frac=Math.max(0,Math.min(1,(cur-start)/Math.max(.01,end-start)));
     $('ytCaptureBar').style.width=`${((index+frac)/total)*100}%`;
-    await wait(80);
+    await wait(60);
   }
-  ytPlayer.pauseVideo();
+
   if(rec.state!=='inactive')rec.stop();
   await done;
+  ytPlayer.pauseVideo();
+
   if(ytCaptureAbort) throw new Error('Capture dibatalkan.');
   const blob=new Blob(chunks,{type:mime||'video/webm'});
-  const dur=end-start;
+  const dur=Math.max(.05,end-start);
   const name=`YT_${String(index+1).padStart(2,'0')}_${fmtMinuteSecond(start).replace(':','-')}_${fmtMinuteSecond(end).replace(':','-')}.webm`;
   const f=new File([blob],name,{type:blob.type||'video/webm'});
   const shiftedChunks=(sel.chunks||[]).map(c=>({...c,start:Math.max(0,c.start-start),end:Math.max(.01,c.end-start)}));
@@ -175,6 +203,8 @@ async function loadYouTubeCapturedClip(item){
   $('detailReason').textContent='Clip YouTube siap diedit • '+(item.sourceSelection.reason||'');
   $('ytCutBtn').style.display='none';
   $('previewBtn').disabled=false;
+  $('subtitle').value='off';
+  drawTemplatePreview();
   $('exportBox').style.display='block';
   status('Clip YouTube masuk editor.',100);
   log(`Editor YouTube: ${item.file.name}`);
