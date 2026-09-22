@@ -64,112 +64,109 @@ function ytCaptureMime(){
   const types=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
   return types.find(x=>MediaRecorder.isTypeSupported(x))||'';
 }
-async function recordOneYouTubeSegment(displayStream,sel,index,total){
+function versionAtLeast(current,minimum){
+  const a=String(current||'0').split('.').map(Number);
+  const b=String(minimum||'0').split('.').map(Number);
+  for(let i=0;i<Math.max(a.length,b.length);i++){
+    const x=a[i]||0,y=b[i]||0;
+    if(x>y)return true;
+    if(x<y)return false;
+  }
+  return true;
+}
+
+function rawCaptureRequest(sel,index,total){
+  return new Promise((resolve,reject)=>{
+    const iframe=$('ytPlayerHost').querySelector('iframe');
+    if(!iframe?.contentWindow){
+      reject(new Error('YouTube iframe belum siap.'));
+      return;
+    }
+
+    const requestId=`raw_${Date.now()}_${index}_${Math.random().toString(36).slice(2)}`;
+    const timeoutMs=Math.max(30000,Math.ceil((Number(sel.end)-Number(sel.start)+25)*1000));
+
+    const cleanup=()=>{
+      clearTimeout(timer);
+      window.removeEventListener('message',onMessage);
+    };
+    const onMessage=e=>{
+      if(e.source!==iframe.contentWindow || !e.data || e.data.source!=='AI_CLIPPER_RAW_RESULT' || e.data.requestId!==requestId) return;
+      cleanup();
+      if(!e.data.ok){
+        reject(new Error(e.data.error||'Raw capture gagal.'));
+        return;
+      }
+      if(!(e.data.blob instanceof Blob) || !e.data.blob.size){
+        reject(new Error('Raw capture menghasilkan file kosong.'));
+        return;
+      }
+      resolve(e.data);
+    };
+    const timer=setTimeout(()=>{
+      cleanup();
+      reject(new Error('Raw capture timeout.'));
+    },timeoutMs);
+
+    window.addEventListener('message',onMessage);
+    iframe.contentWindow.postMessage({
+      source:'AI_CLIPPER_RAW_CAPTURE',
+      type:'CAPTURE_SEGMENT',
+      requestId,
+      start:Number(sel.start||0),
+      end:Number(sel.end||0),
+      index,
+      total
+    },'*');
+  });
+}
+
+async function recordOneYouTubeSegment(sel,index,total){
+  status(`Raw Capture YouTube ${index+1}/${total}…`,Math.round(index/total*100));
+
+  const r=await rawCaptureRequest(sel,index,total);
+  const blob=r.blob;
   const start=Number(sel.start||0),end=Number(sel.end||start);
-  const warmStart=Math.max(0,start-1.25);
-
-  disableYouTubeCaptions();
-  ytPlayer.pauseVideo();
-  ytPlayer.seekTo(warmStart,true);
-  await wait(300);
-  disableYouTubeCaptions();
-  ytPlayer.playVideo();
-
-  const playing=await waitYTPlaying(6000);
-  if(!playing) throw new Error('YouTube player tidak berhasil masuk mode playing.');
-
-  // Tunggu sampai mendekati titik awal sambil video tetap berjalan.
-  const warmDeadline=Date.now()+8000;
-  while(Date.now()<warmDeadline && Number(ytPlayer.getCurrentTime()||0)<Math.max(0,start-.06)){
-    if(ytCaptureAbort) throw new Error('Capture dibatalkan.');
-    disableYouTubeCaptions();
-    await wait(25);
-  }
-
-  const chunks=[];
-  const mime=ytCaptureMime();
-  const opts=mime?{mimeType:mime,videoBitsPerSecond:8_000_000,audioBitsPerSecond:192_000}:{videoBitsPerSecond:8_000_000,audioBitsPerSecond:192_000};
-  const rec=new MediaRecorder(displayStream,opts);
-  rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
-  const done=new Promise((res,rej)=>{rec.onstop=res;rec.onerror=e=>rej(e.error||e)});
-
-  // UI capture tidak boleh ikut terekam.
-  $('ytCaptureBanner').style.display='none';
-  $('ytCaptureClose').style.display='none';
-  $('ytCaptureBar').parentElement.style.display='none';
-
-  // Recorder dimulai saat player SUDAH playing agar tidak merekam tombol Play.
-  rec.start(250);
-
-  while(!ytCaptureAbort && Number(ytPlayer.getCurrentTime())<end){
-    disableYouTubeCaptions();
-    const cur=Number(ytPlayer.getCurrentTime()||start);
-    const frac=Math.max(0,Math.min(1,(cur-start)/Math.max(.01,end-start)));
-    $('ytCaptureBar').style.width=`${((index+frac)/total)*100}%`;
-    await wait(60);
-  }
-
-  if(rec.state!=='inactive')rec.stop();
-  await done;
-  ytPlayer.pauseVideo();
-
-  if(ytCaptureAbort) throw new Error('Capture dibatalkan.');
-  const blob=new Blob(chunks,{type:mime||'video/webm'});
   const dur=Math.max(.05,end-start);
-  const name=`YT_${String(index+1).padStart(2,'0')}_${fmtMinuteSecond(start).replace(':','-')}_${fmtMinuteSecond(end).replace(':','-')}.webm`;
-  const f=new File([blob],name,{type:blob.type||'video/webm'});
+  const ext=(String(r.mime||blob.type).includes('mp4'))?'mp4':'webm';
+  const name=`YT_${String(index+1).padStart(2,'0')}_${fmtMinuteSecond(start).replace(':','-')}_${fmtMinuteSecond(end).replace(':','-')}.${ext}`;
+  const f=new File([blob],name,{type:r.mime||blob.type||'video/webm'});
   const shiftedChunks=(sel.chunks||[]).map(c=>({...c,start:Math.max(0,c.start-start),end:Math.max(.01,c.end-start)}));
   const editSel={...sel,start:0,end:dur,chunks:shiftedChunks,text:sel.text,title:sel.title};
   return {file:f,selection:editSel,sourceSelection:sel,url:URL.createObjectURL(blob)};
 }
+
 async function captureYouTubeSelections(selections,{loadFirst=false}={}){
   if(!ytVideoId)throw new Error('Video YouTube belum siap.');
   if(!ytPlayerReady)throw new Error('Player YouTube belum siap. Tunggu beberapa detik lalu coba lagi.');
-  if(!navigator.mediaDevices?.getDisplayMedia)throw new Error('Browser tidak mendukung tab capture.');
+
+  const ping=await bridgeRequest('YT_BRIDGE_PING',{},5000);
+  if(!versionAtLeast(ping?.version,'1.5.3')){
+    throw new Error('Raw Stream Capture membutuhkan AI Clipper Connector v1.5.3 atau lebih baru.');
+  }
 
   $('ytCaptureStage').style.display='block';
   $('ytCaptureBanner').style.display='block';
+  $('ytCaptureBanner').innerHTML='<b>RAW STREAM CAPTURE</b><br>Yang direkam hanya stream video asli — UI YouTube tidak ikut.';
   $('ytCaptureBar').style.width='0%';
   ytCaptureAbort=false;
 
-  // Connector v1.5.2 membersihkan UI YouTube di dalam iframe:
-  // play/pause bezel, title, watermark, controls, caption, tooltip, spinner.
   try{
-    await bridgeRequest('YT_CLEAN_PLAYER',{},5000);
-    log('Clean Capture: overlay YouTube disembunyikan.');
-  }catch(e){
-    $('ytCaptureStage').style.display='none';
-    throw new Error('Clean Capture membutuhkan AI Clipper Connector v1.5.2. Update Connector lalu coba lagi.');
-  }
-
-  const stream=await navigator.mediaDevices.getDisplayMedia({
-    video:{frameRate:{ideal:30,max:60}},
-    audio:true,
-    preferCurrentTab:true,
-    selfBrowserSurface:'include',
-    surfaceSwitching:'exclude'
-  });
-  const captureTrack=stream.getVideoTracks()[0];
-  if(captureTrack) captureTrack.addEventListener('ended',()=>{ytCaptureAbort=true},{once:true});
-  try{
-    if(!stream.getAudioTracks().length){
-      throw new Error('Audio tab tidak terbagi. Ulangi dan aktifkan "Bagikan audio tab".');
-    }
     const outputs=[];
     for(let i=0;i<selections.length;i++){
       if(ytCaptureAbort)break;
-      status(`Capture YouTube ${i+1}/${selections.length}…`,Math.round(i/selections.length*100));
-      const item=await recordOneYouTubeSegment(stream,selections[i],i,selections.length);
+      const item=await recordOneYouTubeSegment(selections[i],i,selections.length);
       outputs.push(item);
+      $('ytCaptureBar').style.width=`${Math.round(((i+1)/selections.length)*100)}%`;
     }
+
     ytBatchClips.push(...outputs);
     renderBatchClips();
-    $('ytCaptureBar').style.width='100%';
-    status(`Capture selesai — ${outputs.length} clip.`,100);
+    status(`Raw Capture selesai — ${outputs.length} clip.`,100);
+
     if(loadFirst && outputs[0]) await loadYouTubeCapturedClip(outputs[0]);
     return outputs;
   }finally{
-    stream.getTracks().forEach(t=>t.stop());
     try{ytPlayer.pauseVideo()}catch(e){}
     $('ytCaptureStage').style.display='none';
     $('ytCaptureBanner').style.display='block';
@@ -177,7 +174,7 @@ async function captureYouTubeSelections(selections,{loadFirst=false}={}){
     $('ytCaptureBar').parentElement.style.display='block';
   }
 }
-$('ytCaptureClose').onclick=()=>{ytCaptureAbort=true;try{ytPlayer?.pauseVideo()}catch(e){}};
+$('ytCaptureClose').onclick=()=>{ytCaptureAbort=true;try{ytPlayer?.pauseVideo()}catch(e){};$('ytCaptureStage').style.display='none';};
 $('ytCutBtn').onclick=async()=>{
   if(!selected)return;
   try{await captureYouTubeSelections([selected],{loadFirst:true})}
