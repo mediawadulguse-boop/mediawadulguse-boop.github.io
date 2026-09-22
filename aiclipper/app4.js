@@ -288,6 +288,7 @@ async function loadYouTubeCapturedClip(item){
   transcript=item.selection.chunks?.length?item.selection.chunks:[{start:0,end:item.selection.end,text:item.selection.text||''}];
   candidates=[];
   sourceMode='youtube';
+  item.selection.capturedClip=true;
   applySelection(item.selection);
   $('detailReason').textContent='Clip YouTube siap diedit • '+(item.sourceSelection.reason||'');
   $('ytCutBtn').style.display='none';
