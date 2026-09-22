@@ -304,11 +304,11 @@ function findSelectionFromScript(query){
     const endZone=c.wordsContent.slice(-Math.max(20,lastAnchor.length*4));
     const aStart=multisetF1(firstAnchor,startZone);
     const aEnd=multisetF1(lastAnchor,endZone);
-    const score=c.bag*.48+ordered*.32+aStart*.10+aEnd*.10-Math.min(.12,c.lenPenalty*.04);
+    const score=c.bag*.25+ordered*.25+aStart*.25+aEnd*.25-Math.min(.12,c.lenPenalty*.04);
     if(!best||score>best.score)best={...c,ordered,aStart,aEnd,score};
   }
 
-  if(!best || best.score<0.30){
+  if(!best || best.score<0.60 || best.aStart<0.45 || best.aEnd<0.45 || best.ordered<0.45){
     const pct=Math.round((best?.score||0)*100);
     throw new Error(`Kecocokan script terlalu rendah (${pct}%). Gunakan kalimat yang lebih sama dengan transcript atau pilih waktu manual.`);
   }
@@ -342,7 +342,7 @@ function findSelectionFromScript(query){
 
   return {
     start,end,title:'Script Cut',
-    reason:`Pencocokan script berurutan • confidence ${confidence}%`,
+    reason:`STRICT MATCH • confidence ${confidence}% • awal ${Math.round(best.aStart*100)}% • akhir ${Math.round(best.aEnd*100)}%`,
     text:joined,...dims,chunks:chunkSet,matchConfidence:confidence
   };
 }
