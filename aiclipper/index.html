@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Clipper Local v1.7.2</title>
-<link rel="stylesheet" href="app.css?v=172">
+<title>AI Clipper Local v1.7.3</title>
+<link rel="stylesheet" href="app.css?v=173">
 </head>
 <body>
 <div class="app">
   <div class="top">
     <div class="brand">
-      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.7.2</span></h1>
+      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.7.3</span></h1>
       <p>Sistem sederhana • Web + Connector • File lokal + YouTube • AI viral clip</p>
     </div>
-    <div class="row"><div class="pill">v1.7.2 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
+    <div class="row"><div class="pill">v1.7.3 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
   </div>
 
   <div class="grid">
@@ -114,8 +114,12 @@
                   <label class="small">Waktu Awal</label>
                   <div class="row" style="flex-wrap:nowrap">
                     <div style="flex:1">
+                      <label class="tiny" for="startHour">Jam</label>
+                      <input id="startHour" class="inputx" type="number" min="0" step="1" value="0" inputmode="numeric">
+                    </div>
+                    <div style="flex:1">
                       <label class="tiny" for="startMinute">Menit</label>
-                      <input id="startMinute" class="inputx" type="number" min="0" step="1" value="0" inputmode="numeric">
+                      <input id="startMinute" class="inputx" type="number" min="0" max="59" step="1" value="0" inputmode="numeric">
                     </div>
                     <div style="flex:1">
                       <label class="tiny" for="startSecond">Detik</label>
@@ -127,8 +131,12 @@
                   <label class="small">Waktu Akhir</label>
                   <div class="row" style="flex-wrap:nowrap">
                     <div style="flex:1">
+                      <label class="tiny" for="endHour">Jam</label>
+                      <input id="endHour" class="inputx" type="number" min="0" step="1" value="0" inputmode="numeric">
+                    </div>
+                    <div style="flex:1">
                       <label class="tiny" for="endMinute">Menit</label>
-                      <input id="endMinute" class="inputx" type="number" min="0" step="1" value="0" inputmode="numeric">
+                      <input id="endMinute" class="inputx" type="number" min="0" max="59" step="1" value="0" inputmode="numeric">
                     </div>
                     <div style="flex:1">
                       <label class="tiny" for="endSecond">Detik</label>
@@ -139,7 +147,7 @@
               </div>
               <div class="row" style="margin-top:10px">
                 <button class="btn primary" id="manualTimeCutBtn" type="button" disabled>Gunakan Waktu Ini</button>
-                <span class="badge" id="manualTimeStatus">00:00 → 00:00</span>
+                <span class="badge" id="manualTimeStatus">00:00:00 → 00:00:00</span>
               </div>
             </div>
           </div>
@@ -386,14 +394,14 @@ window.addEventListener('error',function(e){
 });
 </script>
 
-<script src="app1.js?v=172"></script>
-<script src="app2.js?v=172"></script>
-<script src="app3.js?v=172"></script>
-<script src="app4.js?v=172"></script>
-<script src="app5.js?v=172"></script>
-<script src="app6.js?v=172"></script>
-<script src="app7.js?v=172"></script>
-<script src="app8.js?v=172"></script>
-<script src="app9.js?v=172"></script>
+<script src="app1.js?v=173"></script>
+<script src="app2.js?v=173"></script>
+<script src="app3.js?v=173"></script>
+<script src="app4.js?v=173"></script>
+<script src="app5.js?v=173"></script>
+<script src="app6.js?v=173"></script>
+<script src="app7.js?v=173"></script>
+<script src="app8.js?v=173"></script>
+<script src="app9.js?v=173"></script>
 </body>
 </html>
