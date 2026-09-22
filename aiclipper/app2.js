@@ -26,7 +26,8 @@ function resetAnalysis(){
   transcript=[];candidates=[];selected=null;
   try{video.pause();outroVideo.pause();}catch(e){}
   if(customPreviewTimer){cancelAnimationFrame(customPreviewTimer);customPreviewTimer=null;}
-  $('results').innerHTML='';$('count').textContent='0 kandidat';$('detail').style.display='none';$('detailEmpty').style.display='block';\n  if($('transcriptTools')) $('transcriptTools').style.display='none';
+  $('results').innerHTML='';$('count').textContent='0 kandidat';$('detail').style.display='none';$('detailEmpty').style.display='block';
+  if($('transcriptTools')) $('transcriptTools').style.display='none';
   $('log').textContent='';status('Siap.',0);
 }
 function hardReset(){
