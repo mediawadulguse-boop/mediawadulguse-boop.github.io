@@ -27,14 +27,18 @@ async function ensureTranscriptOnly(){
 
 $('manualTimeCutBtn').onclick=()=>{
   try{
-    if(!file) throw new Error('Pilih video terlebih dahulu.');
+    if(sourceMode==='local' && !file) throw new Error('Pilih video terlebih dahulu.');
+    if(sourceMode==='youtube' && !ytVideoId) throw new Error('Masukkan link YouTube dan ambil transcript terlebih dahulu.');
+    const sourceDuration=sourceMode==='youtube'
+      ? Number(ytMetadata?.duration||transcript.at(-1)?.end||0)
+      : Number(video.duration||0);
     const start=readTypedTime('startMinute','startSecond');
     const end=readTypedTime('endMinute','endSecond');
     if(Number.isNaN(start)||Number.isNaN(end)){
       throw new Error('Nilai waktu tidak valid. Detik harus berada pada 0–59 dan semua field harus berupa angka bulat.');
     }
-    if(start<0 || end>video.duration+0.05){
-      throw new Error(`Waktu berada di luar durasi video (${fmtTime(video.duration)}).`);
+    if(start<0 || (sourceDuration>0 && end>sourceDuration+0.05)){
+      throw new Error(`Waktu berada di luar durasi video (${fmtTime(sourceDuration)}).`);
     }
     if(end-start<0.5){
       throw new Error('Durasi clip terlalu pendek. Gunakan minimal 0,5 detik.');
@@ -50,7 +54,8 @@ $('manualTimeCutBtn').onclick=()=>{
 
 $('manualScriptCutBtn').onclick=async()=>{
   try{
-    if(!file) throw new Error('Pilih video terlebih dahulu.');
+    if(sourceMode==='local' && !file) throw new Error('Pilih video terlebih dahulu.');
+    if(sourceMode==='youtube' && !transcript.length) throw new Error('Ambil transcript YouTube terlebih dahulu.');
     const query=$('scriptQueryTop').value.trim();
     if(!query) throw new Error('Masukkan script atau kalimat terlebih dahulu.');
     $('manualScriptStatus').textContent='Menyiapkan transcript…';
