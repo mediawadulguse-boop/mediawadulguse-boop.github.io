@@ -21,6 +21,8 @@ function resetYouTubeDownloaderUI(){
 function resetYouTubeWorkStateForNewSource(id){
   if(!id || id===ytActiveSourceId) return;
   ytActiveSourceId=id;
+  ytMetadata=null;
+  ytDetectedInfo=null;
 
   transcript=[];
   candidates=[];
