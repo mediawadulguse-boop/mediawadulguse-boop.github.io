@@ -389,11 +389,15 @@ $('ytDownloadBtn').onclick=async()=>{
         $('ytDownloadMode').textContent='Chrome sedang mengunduh file video utuh.';
         log(`Download langsung dimulai: ${r.quality||info.directQuality||'HD'}`);
       }catch(e){
-        // Direct URL bisa kedaluwarsa; jangan berhenti, turun otomatis ke Clean Capture.
-        log('Direct HD gagal, fallback Capture Bersih: '+(e?.message||e));
+        // Jangan buka Save Picker setelah await/network karena transient user activation bisa sudah habis.
+        // Turunkan mode ke Capture Bersih dan minta satu klik ulang yang fresh.
+        log('Direct HD gagal: '+(e?.message||e));
         ytWebDetectCache.delete(id);
-        $('ytDownloadStatus').textContent='Direct HD dibatasi • beralih ke Capture Bersih…';
-        await downloadFullVideoViaCapture();
+        ytDetectedInfo={...info,directReady:false};
+        $('ytDownloadQuality').textContent='HD Capture';
+        $('ytDownloadStatus').textContent='Direct HD dibatasi • Capture Bersih siap.';
+        $('ytDownloadMode').textContent='Klik Download Utuh HD sekali lagi untuk memilih lokasi file dan mulai Capture Bersih.';
+        $('ytDownloadBtn').textContent='Download Utuh HD';
       }
     }else{
       $('ytDownloadStatus').textContent='Menyiapkan Capture Bersih HD…';
