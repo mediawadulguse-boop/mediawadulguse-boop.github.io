@@ -9,13 +9,18 @@ const ytWebDetectCache=new Map();
 function resetYouTubeDownloaderUI(){
   ytDetectedInfo=null;
   if($('ytDownloadPanel')) $('ytDownloadPanel').style.display='none';
+  if($('ytDownloadMethod')) $('ytDownloadMethod').value='direct';
+  if($('ytDirectQualitySelect')){
+    $('ytDirectQualitySelect').innerHTML='<option value="">Mendeteksi kualitas…</option>';
+    $('ytDirectQualitySelect').disabled=true;
+  }
   if($('ytDownloadBtn')){
     $('ytDownloadBtn').disabled=true;
-    $('ytDownloadBtn').textContent='Download Utuh HD';
+    $('ytDownloadBtn').textContent='Download Tanpa Capture';
   }
   if($('ytDownloadQuality')) $('ytDownloadQuality').textContent='-';
   if($('ytDownloadStatus')) $('ytDownloadStatus').textContent='Menunggu deteksi video…';
-  if($('ytDownloadMode')) $('ytDownloadMode').textContent='Link terdeteksi → cek kualitas → siap download.';
+  if($('ytDownloadMode')) $('ytDownloadMode').textContent='Link terdeteksi → cek format direct → pilih kualitas → download.';
 }
 
 function resetYouTubeWorkStateForNewSource(id){
@@ -74,7 +79,75 @@ function primeYouTubePreview(id){
   $('ytDownloadBtn').disabled=true;
   $('ytDownloadQuality').textContent='…';
   $('ytDownloadStatus').textContent='Mendeteksi video dan kualitas…';
-  $('ytDownloadMode').textContent='Memeriksa metadata + jalur download HD.';
+  $('ytDownloadMode').textContent='Memeriksa format video+audio direct.';
+  $('ytDirectQualitySelect').innerHTML='<option value="">Mendeteksi kualitas…</option>';
+  $('ytDirectQualitySelect').disabled=true;
+}
+
+function formatBytesShort(n){
+  const v=Number(n||0);
+  if(!v) return '';
+  const mb=v/1024/1024;
+  if(mb>=1024) return (mb/1024).toFixed(1)+' GB';
+  return mb.toFixed(mb>=100?0:1)+' MB';
+}
+
+function populateDirectQualityOptions(r){
+  const sel=$('ytDirectQualitySelect');
+  if(!sel) return;
+  const formats=Array.isArray(r?.directFormats)?r.directFormats:[];
+  sel.innerHTML='';
+
+  if(!formats.length){
+    sel.innerHTML='<option value="">Tidak ada format direct</option>';
+    sel.disabled=true;
+    return;
+  }
+
+  for(const f of formats){
+    const opt=document.createElement('option');
+    opt.value=String(f.formatId||f.itag||'');
+    const size=f.size?(' • '+formatBytesShort(f.size)):'';
+    const type=String(f.ext||'').toUpperCase();
+    opt.textContent=`${f.qualityLabel||((f.height||0)+'p')}${type?' • '+type:''}${size}`;
+    sel.appendChild(opt);
+  }
+  sel.disabled=false;
+}
+
+function selectedDirectFormat(){
+  const id=String($('ytDirectQualitySelect')?.value||'');
+  return (ytDetectedInfo?.directFormats||[]).find(x=>String(x.formatId||x.itag||'')===id) || null;
+}
+
+function refreshDownloadMethodUI(){
+  const method=$('ytDownloadMethod')?.value||'direct';
+  const direct=selectedDirectFormat();
+  const hasVideo=!!ytDetectedInfo?.metadata?.duration;
+
+  if(method==='capture'){
+    $('ytDirectQualitySelect').disabled=true;
+    $('ytDownloadBtn').disabled=!hasVideo;
+    $('ytDownloadBtn').textContent='Download via Capture Bersih';
+    $('ytDownloadQuality').textContent='HD Capture';
+    $('ytDownloadMode').textContent='Fallback eksplisit • merekam tab bersih real-time.';
+    return;
+  }
+
+  populateDirectQualityOptions(ytDetectedInfo||{});
+  const chosen=selectedDirectFormat();
+  $('ytDownloadBtn').disabled=!chosen;
+  $('ytDownloadBtn').textContent=chosen
+    ? `Download Tanpa Capture ${chosen.qualityLabel||''}`.trim()
+    : 'Download Tanpa Capture';
+
+  if(chosen){
+    $('ytDownloadQuality').textContent=`${chosen.qualityLabel||'Direct'} Tanpa Capture`;
+    $('ytDownloadMode').textContent='Direct video+audio • tanpa playback • tanpa screen capture.';
+  }else{
+    $('ytDownloadQuality').textContent='Direct tidak tersedia';
+    $('ytDownloadMode').textContent='Pilih Capture Bersih hanya jika Anda memang ingin memakai fallback.';
+  }
 }
 
 function showDetectedYouTubeVideo(r){
@@ -103,20 +176,15 @@ function showDetectedYouTubeVideo(r){
   }
 
   $('ytDownloadPanel').style.display='block';
-  $('ytDownloadBtn').disabled=false;
+  populateDirectQualityOptions(r);
 
-  if(r.directReady){
-    const q=r.directQuality||'HD';
-    $('ytDownloadQuality').textContent=q+' Direct';
-    $('ytDownloadStatus').textContent='✓ Video terdeteksi • siap download langsung.';
-    $('ytDownloadMode').textContent=`Mode Direct • ${q} • video + audio utuh`;
-    $('ytDownloadBtn').textContent=`Download Utuh ${q}`;
+  if(r.directReady && Array.isArray(r.directFormats) && r.directFormats.length){
+    $('ytDownloadStatus').textContent=`✓ Video terdeteksi • ${r.directFormats.length} kualitas tanpa capture tersedia.`;
   }else{
-    $('ytDownloadQuality').textContent='HD Capture';
-    $('ytDownloadStatus').textContent='✓ Video terdeteksi • siap download via Capture Bersih HD.';
-    $('ytDownloadMode').textContent='Fallback HD • direkam dari tab bersih jika direct file dibatasi YouTube.';
-    $('ytDownloadBtn').textContent='Download Utuh HD';
+    $('ytDownloadStatus').textContent='✓ Video terdeteksi • format direct video+audio tidak tersedia.';
   }
+
+  refreshDownloadMethodUI();
 }
 
 function cacheDetectedInfo(id,r){
@@ -367,9 +435,12 @@ async function downloadFullVideoViaCapture(){
   a.remove();
 }
 
+$('ytDownloadMethod').addEventListener('change',refreshDownloadMethodUI);
+$('ytDirectQualitySelect').addEventListener('change',refreshDownloadMethodUI);
+
 $('ytDownloadBtn').onclick=async()=>{
   $('ytDownloadBtn').disabled=true;
-  const oldText=$('ytDownloadBtn').textContent;
+  const method=$('ytDownloadMethod').value||'direct';
 
   try{
     let info=ytDetectedInfo;
@@ -381,40 +452,41 @@ $('ytDownloadBtn').onclick=async()=>{
       if(!info) throw new Error('Video belum berhasil dideteksi.');
     }
 
-    if(info.directReady){
-      $('ytDownloadStatus').textContent='Memulai download HD langsung…';
-      try{
-        const r=await bridgeRequest('YT_DOWNLOAD_DIRECT',{videoId:id},30000);
-        $('ytDownloadStatus').textContent=`✓ Download dimulai • ${r.quality||info.directQuality||'HD'}`;
-        $('ytDownloadMode').textContent='Chrome sedang mengunduh file video utuh.';
-        log(`Download langsung dimulai: ${r.quality||info.directQuality||'HD'}`);
-      }catch(e){
-        // Jangan buka Save Picker setelah await/network karena transient user activation bisa sudah habis.
-        // Turunkan mode ke Capture Bersih dan minta satu klik ulang yang fresh.
-        log('Direct HD gagal: '+(e?.message||e));
-        ytWebDetectCache.delete(id);
-        ytDetectedInfo={...info,directReady:false};
-        $('ytDownloadQuality').textContent='HD Capture';
-        $('ytDownloadStatus').textContent='Direct HD dibatasi • Capture Bersih siap.';
-        $('ytDownloadMode').textContent='Klik Download Utuh HD sekali lagi untuk memilih lokasi file dan mulai Capture Bersih.';
-        $('ytDownloadBtn').textContent='Download Utuh HD';
-      }
-    }else{
+    if(method==='capture'){
       $('ytDownloadStatus').textContent='Menyiapkan Capture Bersih HD…';
       await downloadFullVideoViaCapture();
       if(!$('ytDownloadStatus').textContent.includes('selesai')){
         $('ytDownloadStatus').textContent='✓ Video utuh selesai dibuat dan diunduh.';
         $('ytDownloadMode').textContent='Mode Capture Bersih selesai.';
       }
+      return;
+    }
+
+    const chosen=selectedDirectFormat();
+    if(!chosen){
+      throw new Error('Format Tanpa Capture tidak tersedia untuk video ini. Pilih kualitas direct lain atau gunakan Capture Bersih secara manual.');
+    }
+
+    $('ytDownloadStatus').textContent=`Memulai download ${chosen.qualityLabel||'Direct'} tanpa capture…`;
+    try{
+      const r=await bridgeRequest('YT_DOWNLOAD_DIRECT',{
+        videoId:id,
+        formatId:String(chosen.formatId||chosen.itag||'')
+      },30000);
+      $('ytDownloadStatus').textContent=`✓ Download dimulai • ${r.quality||chosen.qualityLabel||'Direct'} • tanpa capture`;
+      $('ytDownloadMode').textContent='Chrome sedang mengunduh file video+audio utuh langsung.';
+      log(`Download tanpa capture dimulai: ${r.quality||chosen.qualityLabel||'Direct'}`);
+    }catch(e){
+      ytWebDetectCache.delete(id);
+      $('ytDownloadStatus').textContent='Download direct gagal.';
+      $('ytDownloadMode').textContent='Tidak dialihkan otomatis ke capture. Coba Deteksi ulang/kualitas lain, atau pilih Capture Bersih secara manual.';
+      throw e;
     }
   }catch(e){
     console.error(e);
-    $('ytDownloadStatus').textContent='Download gagal.';
-    $('ytDownloadMode').textContent=String(e?.message||e);
     alert('Download gagal: '+(e?.message||e));
   }finally{
-    $('ytDownloadBtn').disabled=false;
-    if(!$('ytDownloadBtn').textContent.startsWith('Download Utuh')) $('ytDownloadBtn').textContent=oldText;
+    refreshDownloadMethodUI();
   }
 };
 
