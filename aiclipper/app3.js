@@ -135,13 +135,12 @@ $('ytFetchBtn').onclick=async()=>{
     log(`Transcript YouTube siap: ${transcript.length} segmen.`);
     ensureYouTubePlayer(id).catch(err=>log('Player: '+err.message));
   }catch(e){
-    status('Transcript tidak tersedia — video tetap siap untuk downloader/manual waktu.',0);
+    status('Transcript tidak tersedia — downloader dan Manual Waktu tetap aktif.',0);
     log('YT TRANSCRIPT: '+e.message);
+    $('ytTranscriptInfo').textContent='Transcript publik tidak tersedia';
+    $('manualScriptCutBtn').disabled=true;
+    $('manualScriptStatus').textContent='Butuh transcript';
     if(typeof detectYouTubeVideo==='function') detectYouTubeVideo({silent:true}).catch(()=>{});
-    alert(
-      e.message+
-      '\n\nTranscript tidak tersedia, tetapi video tetap bisa dideteksi, didownload utuh, atau dipotong berdasarkan waktu.'
-    );
   }finally{$('ytFetchBtn').disabled=false;}
 };
 $('ytAnalyzeBtn').onclick=()=>{
