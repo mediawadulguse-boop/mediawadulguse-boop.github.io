@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Clipper Local v1.9.0</title>
-<link rel="stylesheet" href="app.css?v=190">
+<title>AI Clipper Local v1.10.0</title>
+<link rel="stylesheet" href="app.css?v=1100">
 </head>
 <body>
 <div class="app">
   <div class="top">
     <div class="brand">
-      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.9.0</span></h1>
+      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.10.0</span></h1>
       <p>Sistem sederhana • Web + Connector • File lokal + YouTube • AI viral clip</p>
     </div>
-    <div class="row"><div class="pill">v1.9.0 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
+    <div class="row"><div class="pill">v1.10.0 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
   </div>
 
   <div class="grid">
@@ -111,6 +111,79 @@
         </div>
 
         <div class="filemeta" id="fileMeta"></div>
+
+        <div class="methodbar" id="batchClipPanel">
+          <div class="row" style="justify-content:space-between;align-items:flex-start">
+            <div>
+              <label class="small">Batch Clipper</label>
+              <div style="font-size:16px;font-weight:800">Import Excel/CSV → Clip Massal</div>
+              <div class="tiny">Upload satu video, import daftar timestamp, atur background sekali, lalu export semua clip.</div>
+            </div>
+            <span class="badge" id="batchCount">0 clip</span>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn primary" id="batchImportBtn" type="button">Import Excel / CSV</button>
+            <input id="batchImportInput" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
+            <button class="btn" id="batchResetBtn" type="button">Reset Batch</button>
+            <span class="badge" id="batchImportStatus">Belum ada file</span>
+          </div>
+
+          <div class="templatebox" id="batchGlobalSettings">
+            <div style="font-weight:800;margin-bottom:8px">Pengaturan Global — dipakai untuk semua clip</div>
+            <div class="controls">
+              <div>
+                <label class="small">Layout</label>
+                <select id="batchTemplate">
+                  <option value="editorial" selected>Editorial 9:16 + Background</option>
+                  <option value="full">Fullscreen 9:16</option>
+                </select>
+              </div>
+              <div>
+                <label class="small">Rasio Output</label>
+                <select id="batchRatio">
+                  <option value="9:16" selected>9:16 — Shorts / Reels / TikTok</option>
+                  <option value="4:5">4:5 — Feed</option>
+                  <option value="1:1">1:1 — Square</option>
+                  <option value="16:9">16:9 — Landscape</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <button class="btn" id="batchBgBtn" type="button">Pilih Background Sekali</button>
+              <span class="badge" id="batchBgStatus">Background default</span>
+              <button class="btn" id="batchOutroBtn" type="button">Pilih Outro Sekali</button>
+              <span class="badge" id="batchOutroStatus">Outro tidak ada</span>
+            </div>
+
+            <div class="controls">
+              <div>
+                <label class="small">Judul per Clip</label>
+                <select id="batchHeadlineMode">
+                  <option value="hook" selected>Gunakan Text Hook Brutal / Judul dari Excel</option>
+                  <option value="none">Tanpa headline otomatis</option>
+                </select>
+              </div>
+              <div>
+                <label class="small">Subtitle Batch</label>
+                <select id="batchSubtitle">
+                  <option value="off" selected>Nonaktif</option>
+                  <option value="on">Aktif jika transcript timestamp tersedia</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn good" id="batchExportBtn" type="button" disabled>Export Semua Clip</button>
+            <button class="btn" id="batchStopBtn" type="button" disabled>Stop</button>
+            <span class="badge" id="batchProgressText">Siap</span>
+          </div>
+          <div class="progress" style="margin-top:8px"><i id="batchProgressBar"></i></div>
+
+          <div id="batchList" class="batchclips"></div>
+        </div>
         </div>
 
         <div class="methodbar">
@@ -428,15 +501,16 @@ window.addEventListener('error',function(e){
 });
 </script>
 
-<script src="app1.js?v=190"></script>
-<script src="app2.js?v=190"></script>
-<script src="app3.js?v=190"></script>
-<script src="app4.js?v=190"></script>
-<script src="app5.js?v=190"></script>
-<script src="app6.js?v=190"></script>
-<script src="app7.js?v=190"></script>
-<script src="app8.js?v=190"></script>
-<script src="app9.js?v=190"></script>
-<script src="app10.js?v=190"></script>
+<script src="app1.js?v=1100"></script>
+<script src="app2.js?v=1100"></script>
+<script src="app3.js?v=1100"></script>
+<script src="app4.js?v=1100"></script>
+<script src="app5.js?v=1100"></script>
+<script src="app6.js?v=1100"></script>
+<script src="app7.js?v=1100"></script>
+<script src="app8.js?v=1100"></script>
+<script src="app9.js?v=1100"></script>
+<script src="app10.js?v=1100"></script>
+<script src="app11.js?v=1100"></script>
 </body>
 </html>
