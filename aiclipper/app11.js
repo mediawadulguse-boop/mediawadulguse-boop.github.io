@@ -826,3 +826,16 @@ setTimeout(()=>{
   updateBatchWorkerInfo();
   if(file) refreshBatchAvailability();
 },500);
+
+
+function applyDefaultBatchVisualSettings(){
+  if($('batchHeadlineMode')) $('batchHeadlineMode').value='none';
+  if($('batchSubtitle')) $('batchSubtitle').value='off';
+  if($('videoY')){
+    $('videoY').value='35';
+    if($('videoYVal')) $('videoYVal').textContent='35%';
+  }
+  updateBatchWorkerInfo();
+  refreshBatchAvailability();
+}
+applyDefaultBatchVisualSettings();
