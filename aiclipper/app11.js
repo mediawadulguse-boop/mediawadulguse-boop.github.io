@@ -340,6 +340,7 @@ async function renderBatchClipBlob(item){
 
     const rec=new MediaRecorder(canvasStream,recorderOptions);
     const blobs=[];
+    let clipCancelled=false;
     rec.ondataavailable=e=>{if(e.data?.size)blobs.push(e.data)};
     const done=new Promise((res,rej)=>{rec.onstop=res;rec.onerror=e=>rej(e.error||e)});
     rec.start(1000);
@@ -360,9 +361,10 @@ async function renderBatchClipBlob(item){
       let raf=0;
       const draw=()=>{
         if(batchCancelled){
+          clipCancelled=true;
           video.pause();
           cancelAnimationFrame(raf);
-          return reject(new Error('Batch dibatalkan.'));
+          return resolve();
         }
 
         if(video.ended||video.currentTime>=item.end){
@@ -416,6 +418,8 @@ async function renderBatchClipBlob(item){
 
     if(rec.state!=='inactive') rec.stop();
     await done;
+
+    if(clipCancelled || batchCancelled) throw new Error('Batch dibatalkan.');
 
     return {
       blob:new Blob(blobs,{type:fmt.mime||'video/webm'}),
