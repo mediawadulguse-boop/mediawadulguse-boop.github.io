@@ -123,3 +123,15 @@ function drawTemplatePreview(){
     if(video.readyState>=2)drawCover(ctx,video,w,h);
   }
 }
+
+function applyDefaultVisualSettings(){
+  if($('headline1')) $('headline1').value='';
+  if($('headline2')) $('headline2').value='';
+  if($('subtitle')) $('subtitle').value='off';
+  if($('videoY')){
+    $('videoY').value='35';
+    if($('videoYVal')) $('videoYVal').textContent='35%';
+  }
+  drawTemplatePreview();
+}
+applyDefaultVisualSettings();
