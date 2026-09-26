@@ -17,6 +17,8 @@ async function setFile(f){
   setTypedTime('startHour','startMinute','startSecond',0);
   setTypedTime('endHour','endMinute','endSecond',Math.floor(video.duration||0));
   refreshManualTimeStatus();
+  if(typeof renderBatchList==='function') renderBatchList();
+  if(typeof refreshBatchAvailability==='function') refreshBatchAvailability();
 
   $('detailEmpty').textContent='Video siap. Klik Analisis AI.';
   if(f.size>1.5*1024**3) log('Catatan: video >1.5 GB dapat menggunakan RAM besar di browser.');
@@ -46,6 +48,8 @@ function hardReset(){
   refreshManualTimeStatus();
   video.removeAttribute('src');video.load();
   if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;
+  if(typeof renderBatchList==='function') renderBatchList();
+  if(typeof refreshBatchAvailability==='function') refreshBatchAvailability();
 }
 
 $('pickBtn').onclick=()=>$('fileInput').click();
