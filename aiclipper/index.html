@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Clipper Local v1.10.0</title>
-<link rel="stylesheet" href="app.css?v=1100">
+<title>AI Clipper Local v1.11.0</title>
+<link rel="stylesheet" href="app.css?v=1110">
 </head>
 <body>
 <div class="app">
   <div class="top">
     <div class="brand">
-      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.10.0</span></h1>
+      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.11.0</span></h1>
       <p>Sistem sederhana • Web + Connector • File lokal + YouTube • AI viral clip</p>
     </div>
-    <div class="row"><div class="pill">v1.10.0 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
+    <div class="row"><div class="pill">v1.11.0 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
   </div>
 
   <div class="grid">
@@ -171,6 +171,27 @@
                   <option value="off" selected>Nonaktif</option>
                   <option value="on">Aktif jika transcript timestamp tersedia</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="controls">
+              <div>
+                <label class="small">Kecepatan Render</label>
+                <select id="batchRenderProfile">
+                  <option value="turbo" selected>Turbo — 720×1280 • 24fps • Parallel</option>
+                  <option value="balanced">Balanced — 720×1280 • 30fps • Parallel</option>
+                  <option value="quality">Quality — 1080×1920 • 30fps • 1 Render</option>
+                </select>
+              </div>
+              <div>
+                <label class="small">Parallel Render</label>
+                <select id="batchWorkers">
+                  <option value="auto" selected>Auto — sesuai CPU</option>
+                  <option value="1">1 clip sekaligus</option>
+                  <option value="2">2 clip sekaligus</option>
+                  <option value="3">3 clip sekaligus</option>
+                </select>
+                <div class="tiny" id="batchWorkerInfo">Auto mendeteksi kemampuan perangkat.</div>
               </div>
             </div>
           </div>
@@ -501,16 +522,16 @@ window.addEventListener('error',function(e){
 });
 </script>
 
-<script src="app1.js?v=1100"></script>
-<script src="app2.js?v=1100"></script>
-<script src="app3.js?v=1100"></script>
-<script src="app4.js?v=1100"></script>
-<script src="app5.js?v=1100"></script>
-<script src="app6.js?v=1100"></script>
-<script src="app7.js?v=1100"></script>
-<script src="app8.js?v=1100"></script>
-<script src="app9.js?v=1100"></script>
-<script src="app10.js?v=1100"></script>
-<script src="app11.js?v=1100"></script>
+<script src="app1.js?v=1110"></script>
+<script src="app2.js?v=1110"></script>
+<script src="app3.js?v=1110"></script>
+<script src="app4.js?v=1110"></script>
+<script src="app5.js?v=1110"></script>
+<script src="app6.js?v=1110"></script>
+<script src="app7.js?v=1110"></script>
+<script src="app8.js?v=1110"></script>
+<script src="app9.js?v=1110"></script>
+<script src="app10.js?v=1110"></script>
+<script src="app11.js?v=1110"></script>
 </body>
 </html>
