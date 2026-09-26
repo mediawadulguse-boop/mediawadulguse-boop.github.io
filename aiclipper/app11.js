@@ -293,147 +293,340 @@ function batchFilename(item,ext){
   return sanitizeFileName(`${no}_${item.hook||'Clip'}`)+'.'+ext;
 }
 
-async function renderBatchClipBlob(item){
-  if(!file) throw new Error('Video lokal belum dipilih.');
+function getBatchRenderConfig(){
+  const profile=$('batchRenderProfile')?.value||'turbo';
+  const hc=Math.max(2,Number(navigator.hardwareConcurrency||4));
 
-  const oldSelected=selected;
-  const oldTemplate=$('clipTemplate').value;
-  const oldRatio=$('ratio').value;
-  const oldSubtitle=$('subtitle').value;
-  const oldH1=$('headline1').value;
-  const oldH2=$('headline2').value;
-
-  const chunks=transcript.filter(c=>c.end>=item.start&&c.start<=item.end);
-  selected=buildSelection(item.start,item.end,item.hook,'Batch import',chunks,video.duration);
-
-  const template=$('batchTemplate').value;
-  $('clipTemplate').value=template;
-  $('ratio').value=$('batchRatio').value;
-  $('subtitle').value=$('batchSubtitle').value;
-
-  if($('batchHeadlineMode').value==='hook' && template==='editorial'){
-    const [a,b]=splitBatchHeadline(item.hook);
-    $('headline1').value=a;
-    $('headline2').value=b;
+  let fps=24,videoBits=4_500_000,audioBits=160_000,autoWorkers=2,scale='720';
+  if(profile==='balanced'){
+    fps=30;videoBits=5_500_000;audioBits=160_000;autoWorkers=hc>=8?2:1;scale='720';
+  }else if(profile==='quality'){
+    fps=30;videoBits=8_000_000;audioBits=192_000;autoWorkers=1;scale='1080';
+  }else{
+    autoWorkers=hc>=12?3:(hc>=6?2:1);
   }
 
+  const chosen=$('batchWorkers')?.value||'auto';
+  let workers=chosen==='auto'?autoWorkers:Number(chosen||1);
+  workers=Math.max(1,Math.min(3,workers));
+  if(profile==='quality') workers=1;
+
+  return {profile,fps,videoBits,audioBits,workers,scale,hc};
+}
+
+function batchOutputDimensions(ratio,profile){
+  const quality=profile==='quality';
+  if(ratio==='9:16') return quality?[1080,1920]:[720,1280];
+  if(ratio==='4:5') return quality?[1080,1350]:[720,900];
+  if(ratio==='1:1') return quality?[1080,1080]:[720,720];
+  if(ratio==='16:9') return quality?[1920,1080]:[1280,720];
+  return quality?[1080,1920]:[720,1280];
+}
+
+function updateBatchWorkerInfo(){
+  if(!$('batchWorkerInfo')) return;
+  const c=getBatchRenderConfig();
+  const label=c.profile==='quality'?'Quality':(c.profile==='balanced'?'Balanced':'Turbo');
+  $('batchWorkerInfo').textContent=`${label} • ${c.workers} render paralel • ${c.fps}fps • CPU ${c.hc} thread`;
+}
+
+function configureBatchAudioGraph(ctx,videoEl,outroEl,profileName){
+  const dest=ctx.createMediaStreamDestination();
+  const compressor=ctx.createDynamicsCompressor();
+  const limiter=ctx.createDynamicsCompressor();
+  const output=ctx.createGain();
+  const mainGain=ctx.createGain();
+  const outroGain=ctx.createGain();
+
+  let inputGain=1,threshold=-6,ratio=10,knee=6,attack=.003,release=.22,outputGain=.94;
+  if(profileName==='loud'){
+    inputGain=1.65;threshold=-9;ratio=12;knee=7;attack=.0025;release=.24;outputGain=.92;
+  }else if(profileName==='extra'){
+    inputGain=2.05;threshold=-11;ratio=16;knee=8;attack=.002;release=.28;outputGain=.88;
+  }
+
+  mainGain.gain.value=inputGain;
+  outroGain.gain.value=inputGain;
+  compressor.threshold.value=threshold;
+  compressor.knee.value=knee;
+  compressor.ratio.value=ratio;
+  compressor.attack.value=attack;
+  compressor.release.value=release;
+  limiter.threshold.value=-1.5;
+  limiter.knee.value=0;
+  limiter.ratio.value=20;
+  limiter.attack.value=.001;
+  limiter.release.value=.08;
+  output.gain.value=outputGain;
+
+  const mainSource=ctx.createMediaElementSource(videoEl);
+  mainSource.connect(mainGain);
+  mainGain.connect(compressor);
+
+  let outroSource=null;
+  if(outroEl){
+    outroSource=ctx.createMediaElementSource(outroEl);
+    outroSource.connect(outroGain);
+    outroGain.connect(compressor);
+  }
+
+  compressor.connect(limiter);
+  limiter.connect(output);
+  output.connect(dest);
+
+  return {dest,mainSource,outroSource};
+}
+
+function makeBatchStaticLayer(item,settings,w,h){
+  const c=document.createElement('canvas');
+  c.width=w;c.height=h;
+  const ctx=c.getContext('2d');
+
+  if(settings.template==='editorial'){
+    if(bgImage) drawCoverRect(ctx,bgImage,0,0,w,h);
+    else drawDefaultBackground(ctx,w,h);
+
+    if(settings.headlineMode==='hook'){
+      const [a,b]=splitBatchHeadline(item.hook);
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.strokeStyle='#000';
+      ctx.lineWidth=Math.max(4,w*.008);
+
+      if(a){
+        ctx.font=`900 ${Math.round(w*.105)}px Arial Black, Arial`;
+        ctx.fillStyle='#fff';
+        ctx.strokeText(a,w/2,h*.10);
+        ctx.fillText(a,w/2,h*.10);
+      }
+
+      if(b){
+        ctx.font=`900 ${Math.round(w*.112)}px Arial Black, Arial`;
+        ctx.fillStyle='#20ff57';
+        ctx.strokeText(b,w/2,h*.19);
+        ctx.fillText(b,w/2,h*.19);
+      }
+    }
+  }else{
+    ctx.fillStyle='#000';
+    ctx.fillRect(0,0,w,h);
+  }
+
+  return c;
+}
+
+function batchSubtitleAt(item,t){
+  if($('batchSubtitle')?.value!=='on') return '';
+  const hit=transcript.find(c=>t>=c.start&&t<=c.end&&c.end>=item.start&&c.start<=item.end);
+  return hit?.text||'';
+}
+
+function drawBatchFrame(ctx,staticLayer,videoEl,item,settings,w,h){
+  ctx.clearRect(0,0,w,h);
+  ctx.drawImage(staticLayer,0,0,w,h);
+
+  if(settings.template==='editorial'){
+    const y=h*(settings.videoY/100);
+    const vh=h*(settings.videoH/100);
+    ctx.fillStyle='#000';
+    ctx.fillRect(0,y,w,vh);
+    if(videoEl.readyState>=2) drawCoverRect(ctx,videoEl,0,y,w,vh);
+    ctx.strokeStyle='rgba(255,255,255,.10)';
+    ctx.lineWidth=1;
+    ctx.strokeRect(0,y,w,vh);
+
+    const s=batchSubtitleAt(item,videoEl.currentTime);
+    if(s){
+      ctx.font=`800 ${Math.max(24,Math.round(w/28))}px Arial`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      const lines=wrapText(ctx,s,w*.78,2);
+      const lh=Math.round(w/24);
+      const boxH=lines.length*lh+20;
+      const cy=y+vh*.58;
+      ctx.fillStyle='rgba(0,0,0,.62)';
+      ctx.fillRect(w*.10,cy-boxH/2,w*.80,boxH);
+      ctx.strokeStyle='#000';ctx.lineWidth=4;ctx.fillStyle='#fff';
+      lines.forEach((ln,i)=>{
+        const yy=cy-(lines.length-1)*lh/2+i*lh;
+        ctx.strokeText(ln,w/2,yy);
+        ctx.fillText(ln,w/2,yy);
+      });
+    }
+  }else{
+    if(videoEl.readyState>=2) drawCover(ctx,videoEl,w,h);
+  }
+}
+
+function createHiddenBatchMedia(src){
+  const el=document.createElement('video');
+  el.src=src;
+  el.preload='auto';
+  el.playsInline=true;
+  el.crossOrigin='anonymous';
+  el.style.position='fixed';
+  el.style.left='-10000px';
+  el.style.top='0';
+  el.style.width='2px';
+  el.style.height='2px';
+  el.style.opacity='.001';
+  el.style.pointerEvents='none';
+  document.body.appendChild(el);
+  return el;
+}
+
+async function waitBatchMetadata(el,timeout=12000){
+  if(el.readyState>=1 && Number.isFinite(el.duration)) return;
+  await new Promise((resolve,reject)=>{
+    let done=false;
+    const ok=()=>{if(done)return;done=true;cleanup();resolve()};
+    const fail=()=>{if(done)return;done=true;cleanup();reject(new Error('Video worker gagal dimuat.'))};
+    const cleanup=()=>{el.removeEventListener('loadedmetadata',ok);el.removeEventListener('error',fail);clearTimeout(timer)};
+    el.addEventListener('loadedmetadata',ok,{once:true});
+    el.addEventListener('error',fail,{once:true});
+    const timer=setTimeout(fail,timeout);
+  });
+}
+
+async function seekBatchMedia(el,time,timeout=8000){
+  if(Math.abs((el.currentTime||0)-time)<.04 && el.readyState>=2) return;
+  await new Promise((resolve,reject)=>{
+    let done=false;
+    const ok=()=>{if(done)return;done=true;cleanup();resolve()};
+    const fail=()=>{if(done)return;done=true;cleanup();reject(new Error('Seek video worker timeout.'))};
+    const cleanup=()=>{el.removeEventListener('seeked',ok);clearTimeout(timer)};
+    el.addEventListener('seeked',ok,{once:true});
+    const timer=setTimeout(fail,timeout);
+    try{el.currentTime=time}catch(e){cleanup();reject(e)}
+  });
+}
+
+async function renderBatchClipBlobFast(item,settings){
+  if(!file||!objectUrl) throw new Error('Video lokal belum siap.');
+
+  const cfg=settings.render;
+  const [w,h]=batchOutputDimensions(settings.ratio,cfg.profile);
+  const main=createHiddenBatchMedia(objectUrl);
+  const outro=settings.outroUrl?createHiddenBatchMedia(settings.outroUrl):null;
+  let audioCtx=null,canvas=null,canvasStream=null,rec=null,timer=null;
+
   try{
-    applyAudioProfile();
+    await waitBatchMetadata(main);
+    if(outro) await waitBatchMetadata(outro);
 
-    let ratio=$('ratio').value;
-    if(template==='editorial') ratio='9:16';
-    const [w,h]=template==='editorial'?[1080,1920]:dimensions(ratio,video.videoWidth,video.videoHeight);
-    const canvas=$('renderCanvas');
+    canvas=document.createElement('canvas');
     canvas.width=w;canvas.height=h;
-    const ctx=canvas.getContext('2d');
+    canvas.style.position='fixed';
+    canvas.style.left='-10000px';
+    canvas.style.top='0';
+    document.body.appendChild(canvas);
 
-    const canvasStream=canvas.captureStream(30);
-    const sharedStream=await ensureSharedAudioGraph();
-    sharedStream.getAudioTracks().forEach(t=>canvasStream.addTrack(t));
+    const ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
+    const staticLayer=makeBatchStaticLayer(item,settings,w,h);
+
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const audio=configureBatchAudioGraph(audioCtx,main,outro,settings.audioProfile);
+    if(audioCtx.state==='suspended') await audioCtx.resume();
+
+    canvasStream=canvas.captureStream(cfg.fps);
+    audio.dest.stream.getAudioTracks().forEach(t=>canvasStream.addTrack(t));
 
     const fmt=supportedMime();
-    const recorderOptions=fmt.mime?{
+    const options=fmt.mime?{
       mimeType:fmt.mime,
-      videoBitsPerSecond:7_000_000,
-      audioBitsPerSecond:192_000
-    }:{audioBitsPerSecond:192_000};
+      videoBitsPerSecond:cfg.videoBits,
+      audioBitsPerSecond:cfg.audioBits
+    }:{
+      videoBitsPerSecond:cfg.videoBits,
+      audioBitsPerSecond:cfg.audioBits
+    };
 
-    const rec=new MediaRecorder(canvasStream,recorderOptions);
-    const blobs=[];
-    let clipCancelled=false;
-    rec.ondataavailable=e=>{if(e.data?.size)blobs.push(e.data)};
-    const done=new Promise((res,rej)=>{rec.onstop=res;rec.onerror=e=>rej(e.error||e)});
-    rec.start(1000);
-
-    video.currentTime=item.start;
-    await new Promise((res,rej)=>{
-      let doneSeek=false;
-      const ok=()=>{if(doneSeek)return;doneSeek=true;cleanup();res()};
-      const fail=()=>{if(doneSeek)return;doneSeek=true;cleanup();rej(new Error('Seek video gagal.'))};
-      const cleanup=()=>{video.removeEventListener('seeked',ok);clearTimeout(timer)};
-      video.addEventListener('seeked',ok,{once:true});
-      const timer=setTimeout(fail,8000);
+    const chunks=[];
+    rec=new MediaRecorder(canvasStream,options);
+    rec.ondataavailable=e=>{if(e.data?.size) chunks.push(e.data)};
+    const stopped=new Promise((resolve,reject)=>{
+      rec.onstop=resolve;
+      rec.onerror=e=>reject(e.error||e);
     });
 
-    await video.play();
+    await seekBatchMedia(main,item.start);
+    drawBatchFrame(ctx,staticLayer,main,item,settings,w,h);
+    rec.start(750);
+    await main.play();
 
     await new Promise((resolve,reject)=>{
-      let raf=0;
-      const draw=()=>{
+      timer=setInterval(()=>{
         if(batchCancelled){
-          clipCancelled=true;
-          video.pause();
-          cancelAnimationFrame(raf);
-          return resolve();
+          clearInterval(timer);timer=null;
+          main.pause();
+          resolve();
+          return;
         }
 
-        if(video.ended||video.currentTime>=item.end){
-          video.pause();
-          cancelAnimationFrame(raf);
-          return resolve();
-        }
+        drawBatchFrame(ctx,staticLayer,main,item,settings,w,h);
 
-        ctx.clearRect(0,0,w,h);
-        if(template==='editorial'){
-          drawEditorial(ctx,w,h,false,false);
-        }else{
-          ctx.fillStyle='#000';
-          ctx.fillRect(0,0,w,h);
-          drawCover(ctx,video,w,h);
+        if(main.ended||main.currentTime>=item.end){
+          clearInterval(timer);timer=null;
+          main.pause();
+          resolve();
         }
-        raf=requestAnimationFrame(draw);
-      };
-      draw();
+      },Math.max(16,Math.round(1000/cfg.fps)));
     });
 
-    if(outroFile){
-      outroVideo.currentTime=0;
-      await new Promise(res=>{
-        if(outroVideo.readyState>=1)return res();
-        outroVideo.onloadedmetadata=res;
-      });
-      await outroVideo.play();
+    if(batchCancelled) throw new Error('Batch dibatalkan.');
+
+    if(outro){
+      await seekBatchMedia(outro,0);
+      await outro.play();
 
       await new Promise(resolve=>{
-        let raf=0;
-        const draw=()=>{
-          if(batchCancelled){
-            outroVideo.pause();
-            cancelAnimationFrame(raf);
-            return resolve();
-          }
-          if(outroVideo.ended||outroVideo.paused){
-            outroVideo.pause();
-            cancelAnimationFrame(raf);
-            return resolve();
+        timer=setInterval(()=>{
+          if(batchCancelled||outro.ended){
+            clearInterval(timer);timer=null;
+            outro.pause();
+            resolve();
+            return;
           }
           ctx.clearRect(0,0,w,h);
           ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
-          drawCover(ctx,outroVideo,w,h);
-          raf=requestAnimationFrame(draw);
-        };
-        draw();
+          if(outro.readyState>=2) drawCover(ctx,outro,w,h);
+        },Math.max(16,Math.round(1000/cfg.fps)));
       });
     }
 
-    if(rec.state!=='inactive') rec.stop();
-    await done;
+    if(batchCancelled) throw new Error('Batch dibatalkan.');
 
-    if(clipCancelled || batchCancelled) throw new Error('Batch dibatalkan.');
+    if(rec.state!=='inactive') rec.stop();
+    await stopped;
 
     return {
-      blob:new Blob(blobs,{type:fmt.mime||'video/webm'}),
+      blob:new Blob(chunks,{type:fmt.mime||'video/webm'}),
       ext:fmt.ext
     };
   }finally{
-    try{video.pause();outroVideo.pause()}catch(e){}
-    selected=oldSelected;
-    $('clipTemplate').value=oldTemplate;
-    $('ratio').value=oldRatio;
-    $('subtitle').value=oldSubtitle;
-    $('headline1').value=oldH1;
-    $('headline2').value=oldH2;
+    if(timer) clearInterval(timer);
+    try{main.pause()}catch(e){}
+    try{outro?.pause()}catch(e){}
+    try{if(rec&&rec.state!=='inactive')rec.stop()}catch(e){}
+    try{canvasStream?.getTracks().forEach(t=>t.stop())}catch(e){}
+    try{await audioCtx?.close()}catch(e){}
+    try{main.remove()}catch(e){}
+    try{outro?.remove()}catch(e){}
+    try{canvas?.remove()}catch(e){}
   }
+}
+
+function getBatchSettingsSnapshot(){
+  return {
+    template:$('batchTemplate').value,
+    ratio:$('batchRatio').value,
+    headlineMode:$('batchHeadlineMode').value,
+    subtitle:$('batchSubtitle').value,
+    videoY:Number($('videoY').value||30),
+    videoH:Number($('videoH').value||28),
+    audioProfile:$('audioProfile').value,
+    outroUrl:outroObjectUrl||null,
+    render:getBatchRenderConfig()
+  };
 }
 
 $('batchImportBtn').onclick=()=>$('batchImportInput').click();
@@ -492,6 +685,14 @@ $('batchTemplate').addEventListener('change',refreshBatchAvailability);
 $('batchRatio').addEventListener('change',refreshBatchAvailability);
 $('batchHeadlineMode').addEventListener('change',refreshBatchAvailability);
 $('batchSubtitle').addEventListener('change',refreshBatchAvailability);
+$('batchRenderProfile').addEventListener('change',()=>{
+  updateBatchWorkerInfo();
+  refreshBatchAvailability();
+});
+$('batchWorkers').addEventListener('change',()=>{
+  updateBatchWorkerInfo();
+  refreshBatchAvailability();
+});
 
 $('batchStopBtn').onclick=()=>{
   batchCancelled=true;
@@ -502,7 +703,7 @@ $('batchExportBtn').onclick=async()=>{
   if(batchExporting) return;
 
   const queue=batchSelectedRows();
-  if(!file) return alert('Upload video lokal terlebih dahulu.');
+  if(!file||!objectUrl) return alert('Upload video lokal terlebih dahulu.');
   if(!queue.length) return alert('Tidak ada clip valid yang dipilih.');
 
   let directoryHandle=null;
@@ -515,27 +716,56 @@ $('batchExportBtn').onclick=async()=>{
     }
   }
 
+  const settings=getBatchSettingsSnapshot();
+  let workers=settings.render.workers;
+
+  // Banyak download paralel tanpa Directory Picker sering diblokir browser.
+  if(!directoryHandle && workers>1){
+    workers=1;
+    settings.render={...settings.render,workers:1};
+    log('Turbo Parallel diturunkan ke 1 worker karena browser tidak memberikan akses folder langsung.');
+  }
+
   batchExporting=true;
   batchCancelled=false;
   $('batchExportBtn').disabled=true;
   $('batchStopBtn').disabled=false;
 
-  let success=0,failed=0;
+  queue.forEach(x=>{x.state='ready';delete x.lastError});
+  renderBatchList();
 
-  try{
-    for(let i=0;i<queue.length;i++){
-      if(batchCancelled) break;
+  let nextIndex=0,success=0,failed=0,completed=0;
+  const startedAt=performance.now();
 
-      const item=queue[i];
+  const updateProgress=()=>{
+    const pct=queue.length?completed/queue.length*100:0;
+    $('batchProgressBar').style.width=Math.max(0,Math.min(100,pct))+'%';
+
+    const elapsed=(performance.now()-startedAt)/1000;
+    const avg=completed?elapsed/completed:0;
+    const left=Math.max(0,queue.length-completed);
+    const eta=completed?Math.round(avg*left/Math.max(1,workers)):0;
+
+    $('batchProgressText').textContent=
+      `${completed}/${queue.length} selesai • ${workers} parallel`+
+      (completed&&left?` • ETA ~${fmtMinuteSecond(eta)}`:'');
+  };
+
+  const worker=async(workerId)=>{
+    while(!batchCancelled){
+      const idx=nextIndex++;
+      if(idx>=queue.length) return;
+
+      const item=queue[idx];
       item.state='working';
+      item.worker=workerId;
       renderBatchList();
-
-      const pct=(i/queue.length)*100;
-      $('batchProgressBar').style.width=pct+'%';
-      $('batchProgressText').textContent=`Clip ${i+1}/${queue.length} • ${item.hook}`;
+      updateProgress();
 
       try{
-        const out=await renderBatchClipBlob(item);
+        const out=await renderBatchClipBlobFast(item,settings);
+        if(batchCancelled) return;
+
         const name=batchFilename(item,out.ext);
 
         if(directoryHandle){
@@ -546,30 +776,46 @@ $('batchExportBtn').onclick=async()=>{
           a.href=url;a.download=name;
           document.body.appendChild(a);a.click();a.remove();
           setTimeout(()=>URL.revokeObjectURL(url),5000);
-          await new Promise(r=>setTimeout(r,250));
+          await new Promise(r=>setTimeout(r,300));
         }
 
         item.state='done';
         success++;
       }catch(err){
-        console.error('Batch clip error',item,err);
+        if(batchCancelled) return;
+        console.error('Batch worker error',workerId,item,err);
         item.state='error';
         item.lastError=String(err?.message||err);
         failed++;
-        if(batchCancelled) break;
+      }finally{
+        if(!batchCancelled){
+          completed++;
+          renderBatchList();
+          updateProgress();
+        }
       }
-
-      renderBatchList();
     }
+  };
+
+  try{
+    updateBatchWorkerInfo();
+    log(`Batch Turbo: ${workers} worker • ${settings.render.fps}fps • ${settings.render.scale}p profile.`);
+
+    await Promise.all(
+      Array.from({length:workers},(_,i)=>worker(i+1))
+    );
   }finally{
     batchExporting=false;
     $('batchStopBtn').disabled=true;
-    $('batchProgressBar').style.width='100%';
+    $('batchProgressBar').style.width=batchCancelled
+      ? (queue.length?completed/queue.length*100:0)+'%'
+      : '100%';
 
+    const seconds=Math.round((performance.now()-startedAt)/1000);
     if(batchCancelled){
-      $('batchProgressText').textContent=`Dihentikan • ${success} selesai • ${failed} gagal`;
+      $('batchProgressText').textContent=`Dihentikan • ${success} selesai • ${failed} gagal • ${fmtMinuteSecond(seconds)}`;
     }else{
-      $('batchProgressText').textContent=`Selesai • ${success} berhasil • ${failed} gagal`;
+      $('batchProgressText').textContent=`Selesai • ${success} berhasil • ${failed} gagal • ${fmtMinuteSecond(seconds)}`;
     }
 
     refreshBatchAvailability();
@@ -577,5 +823,6 @@ $('batchExportBtn').onclick=async()=>{
 };
 
 setTimeout(()=>{
+  updateBatchWorkerInfo();
   if(file) refreshBatchAvailability();
 },500);
