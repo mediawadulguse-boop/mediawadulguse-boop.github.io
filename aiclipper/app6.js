@@ -132,6 +132,12 @@ function applyDefaultVisualSettings(){
     $('videoY').value='35';
     if($('videoYVal')) $('videoYVal').textContent='35%';
   }
+  if($('videoH')){
+    $('videoH').value='30';
+    if($('videoHVal')) $('videoHVal').textContent='30%';
+  }
+  if($('introPoster')) $('introPoster').value='0';
+  if($('outroPoster')) $('outroPoster').value='0';
   drawTemplatePreview();
 }
 applyDefaultVisualSettings();
