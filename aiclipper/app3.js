@@ -132,7 +132,8 @@ $('ytFetchBtn').onclick=async()=>{
     setTypedTime('endHour','endMinute','endSecond',Math.floor(Number(r.metadata?.duration||transcript.at(-1)?.end||0)));
     refreshManualTimeStatus();
     status(`Transcript siap — ${transcript.length} segmen.`,100);
-    log(`Transcript YouTube siap: ${transcript.length} segmen.`);
+    log(`Transcript YouTube siap: ${transcript.length} segmen • ${r.method||'engine otomatis'}.`);
+    if(Array.isArray(r.diag) && r.diag.length) log('Transcript diagnostic: '+r.diag.join(' | '));
     ensureYouTubePlayer(id).catch(err=>log('Player: '+err.message));
   }catch(e){
     status('Transcript tidak tersedia — downloader dan Manual Waktu tetap aktif.',0);
