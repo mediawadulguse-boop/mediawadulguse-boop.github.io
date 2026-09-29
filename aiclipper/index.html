@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Clipper Local v1.11.2</title>
-<link rel="stylesheet" href="app.css?v=1112">
+<title>AI Clipper Local v1.12.0</title>
+<link rel="stylesheet" href="app.css?v=1200">
 </head>
 <body>
 <div class="app">
   <div class="top">
     <div class="brand">
-      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.11.2</span></h1>
+      <h1>AI Clipper Local <span style="font-size:13px;color:var(--muted)">v1.12.0</span></h1>
       <p>Sistem sederhana • Web + Connector • File lokal + YouTube • AI viral clip</p>
     </div>
-    <div class="row"><div class="pill">v1.11.2 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
+    <div class="row"><div class="pill">v1.12.0 Simple Direct</div><div class="pill" id="compat">Memeriksa browser…</div></div>
   </div>
 
   <div class="grid">
@@ -171,6 +171,26 @@
                   <option value="off" selected>Nonaktif</option>
                   <option value="on">Aktif jika transcript timestamp tersedia</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="controls">
+              <div>
+                <label class="small">Auto Motion</label>
+                <select id="batchAutoMotion">
+                  <option value="on" selected>Aktif — Zoom & Pan Otomatis</option>
+                  <option value="off">Nonaktif</option>
+                </select>
+                <div class="tiny">Gerakan halus otomatis tanpa AI berat saat render.</div>
+              </div>
+              <div>
+                <label class="small">Intensitas Motion</label>
+                <select id="batchMotionIntensity">
+                  <option value="soft">Soft</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="strong">Strong</option>
+                </select>
+                <div class="tiny">Pergantian motion mengikuti segmen waktu clip.</div>
               </div>
             </div>
 
@@ -522,16 +542,16 @@ window.addEventListener('error',function(e){
 });
 </script>
 
-<script src="app1.js?v=1112"></script>
-<script src="app2.js?v=1112"></script>
-<script src="app3.js?v=1112"></script>
-<script src="app4.js?v=1112"></script>
-<script src="app5.js?v=1112"></script>
-<script src="app6.js?v=1112"></script>
-<script src="app7.js?v=1112"></script>
-<script src="app8.js?v=1112"></script>
-<script src="app9.js?v=1112"></script>
-<script src="app10.js?v=1112"></script>
-<script src="app11.js?v=1112"></script>
+<script src="app1.js?v=1200"></script>
+<script src="app2.js?v=1200"></script>
+<script src="app3.js?v=1200"></script>
+<script src="app4.js?v=1200"></script>
+<script src="app5.js?v=1200"></script>
+<script src="app6.js?v=1200"></script>
+<script src="app7.js?v=1200"></script>
+<script src="app8.js?v=1200"></script>
+<script src="app9.js?v=1200"></script>
+<script src="app10.js?v=1200"></script>
+<script src="app11.js?v=1200"></script>
 </body>
 </html>
