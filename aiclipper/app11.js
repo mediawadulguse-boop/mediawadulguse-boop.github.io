@@ -421,16 +421,56 @@ function batchSubtitleAt(item,t){
   return hit?.text||'';
 }
 
+function batchMotionState(item,currentTime,intensity){
+  const elapsed=Math.max(0,currentTime-item.start);
+  const segment=Math.floor(elapsed/4.5);
+  const phase=(elapsed%4.5)/4.5;
+  const ease=phase*phase*(3-2*phase);
+  const amp=intensity==='strong'?.085:(intensity==='soft'?.035:.055);
+  const patterns=[
+    {z0:1,z1:1+amp,px:0,py:0},
+    {z0:1+amp,z1:1,px:0,py:0},
+    {z0:1+amp*.35,z1:1+amp,px:-.55,py:0},
+    {z0:1+amp,z1:1+amp*.35,px:.55,py:0},
+    {z0:1+amp*.25,z1:1+amp*.8,px:0,py:-.35}
+  ];
+  const p=patterns[(segment+item.id)%patterns.length];
+  return {
+    zoom:p.z0+(p.z1-p.z0)*ease,
+    panX:p.px*amp*ease,
+    panY:p.py*amp*ease
+  };
+}
+
+function drawMotionCoverRect(ctx,source,x,y,w,h,motion){
+  const sw=source.videoWidth||source.naturalWidth||source.width||1;
+  const sh=source.videoHeight||source.naturalHeight||source.height||1;
+  const scale=Math.max(w/sw,h/sh)*(motion?.zoom||1);
+  const dw=sw*scale,dh=sh*scale;
+  const overflowX=Math.max(0,dw-w);
+  const overflowY=Math.max(0,dh-h);
+  const panX=(motion?.panX||0)*overflowX;
+  const panY=(motion?.panY||0)*overflowY;
+  ctx.save();
+  ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+  ctx.drawImage(source,x+(w-dw)/2+panX,y+(h-dh)/2+panY,dw,dh);
+  ctx.restore();
+}
+
 function drawBatchFrame(ctx,staticLayer,videoEl,item,settings,w,h){
   ctx.clearRect(0,0,w,h);
   ctx.drawImage(staticLayer,0,0,w,h);
+
+  const motion=settings.autoMotion
+    ? batchMotionState(item,videoEl.currentTime,settings.motionIntensity)
+    : {zoom:1,panX:0,panY:0};
 
   if(settings.template==='editorial'){
     const y=h*(settings.videoY/100);
     const vh=h*(settings.videoH/100);
     ctx.fillStyle='#000';
     ctx.fillRect(0,y,w,vh);
-    if(videoEl.readyState>=2) drawCoverRect(ctx,videoEl,0,y,w,vh);
+    if(videoEl.readyState>=2) drawMotionCoverRect(ctx,videoEl,0,y,w,vh,motion);
     ctx.strokeStyle='rgba(255,255,255,.10)';
     ctx.lineWidth=1;
     ctx.strokeRect(0,y,w,vh);
@@ -453,7 +493,7 @@ function drawBatchFrame(ctx,staticLayer,videoEl,item,settings,w,h){
       });
     }
   }else{
-    if(videoEl.readyState>=2) drawCover(ctx,videoEl,w,h);
+    if(videoEl.readyState>=2) drawMotionCoverRect(ctx,videoEl,0,0,w,h,motion);
   }
 }
 
@@ -621,7 +661,9 @@ function getBatchSettingsSnapshot(){
     ratio:$('batchRatio').value,
     headlineMode:$('batchHeadlineMode').value,
     subtitle:$('batchSubtitle').value,
-    videoY:Number($('videoY').value||30),
+    autoMotion:($('batchAutoMotion')?.value||'on')==='on',
+    motionIntensity:$('batchMotionIntensity')?.value||'medium',
+    videoY:Number($('videoY').value||35),
     videoH:Number($('videoH').value||28),
     audioProfile:$('audioProfile').value,
     outroUrl:outroObjectUrl||null,
@@ -685,6 +727,8 @@ $('batchTemplate').addEventListener('change',refreshBatchAvailability);
 $('batchRatio').addEventListener('change',refreshBatchAvailability);
 $('batchHeadlineMode').addEventListener('change',refreshBatchAvailability);
 $('batchSubtitle').addEventListener('change',refreshBatchAvailability);
+$('batchAutoMotion').addEventListener('change',refreshBatchAvailability);
+$('batchMotionIntensity').addEventListener('change',refreshBatchAvailability);
 $('batchRenderProfile').addEventListener('change',()=>{
   updateBatchWorkerInfo();
   refreshBatchAvailability();
