@@ -1,7 +1,7 @@
-/* MEDIA WADUL GUS'E — Service Worker v1.16.1
+/* MEDIA WADUL GUS'E — Service Worker v1.32.0
    Strategi: navigation/config network-first agar versi baru tidak tertahan cache.
 */
-const CACHE_NAME='mwg-shell-v1.16.1';
+const CACHE_NAME='mwg-shell-v1.32.0';
 const INDEX_URL='./index.html';
 
 self.addEventListener('install',event=>{
