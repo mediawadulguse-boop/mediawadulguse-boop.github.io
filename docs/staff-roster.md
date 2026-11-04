@@ -1,8 +1,8 @@
-# Jadwal Siaga / Off dan status staf
+# Jadwal On / Siaga / Off dan status staf
 
-Fitur tersedia mulai versi 1.32.0. Buka **Kalender → Siaga / Off** dengan akun pengelola.
+Fitur tersedia mulai versi 1.32.0. Sejak v1.33.0 buka **Kalender → On / Siaga / Off** dengan akun pengelola. **On = hijau**, **Siaga = kuning**, **Off = merah** pada kalender, ringkasan, dan detail tanggal, termasuk tema gelap.
 
-- **Pola Mingguan** mengatur Siaga / Off per staf untuk setiap hari. Pilihan “—” berarti belum diatur; aplikasi tidak membuat jadwal awal secara otomatis.
+- **Pola Mingguan** mengatur On / Siaga / Off per staf untuk setiap hari. Pilihan “—” berarti belum diatur; aplikasi tidak membuat jadwal awal secara otomatis. Jam kerja / siaga tersedia untuk On dan Siaga pada pengaturan tanggal.
 - **Atur Tanggal** menerapkan perubahan untuk satu tanggal atau rentang tanggal, staf terpilih, jam siaga WIB, dan catatan opsional. Perubahan khusus tanggal memiliki prioritas atas pola mingguan.
 - Pilih **Ikuti Pola Mingguan** untuk menghapus perubahan khusus pada tanggal dan staf yang dipilih.
 - Klik tanggal untuk melihat seluruh staf beserta jam dan catatannya. Filter staf dan status tersedia di atas kalender.

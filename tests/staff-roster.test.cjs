@@ -36,6 +36,13 @@ test('weekly patterns use calendar weekdays without a UTC date shift',()=>{
   assert.equal(roster.statusAt(accounts[0],'2026-11-01').status,'Off');
   assert.equal(roster.statusAt(accounts[0],'2026-11-02').status,'Siaga');
 });
+test('On is retained in weekly schedules and persisted date overrides with working hours',async()=>{
+  const f=fixture();await f.roster.saveWeekly({A:Array(7).fill('On')});
+  assert.equal(f.roster.statusAt(f.accounts[0],'2026-11-04').status,'On');
+  await f.roster.setOverrides({from:'2026-11-04',to:'2026-11-04',ids:['A'],status:'On',start:'08:00',end:'16:00'});
+  assert.equal(f.roster.statusAt(f.accounts[0],'2026-11-04').start,'08:00');
+  await f.roster.ensure({force:true});assert.equal(f.roster.statusAt(f.accounts[0],'2026-11-04').status,'On');
+});
 test('date exceptions override the weekly pattern and preserve overnight times',()=>{
   const {roster,accounts}=fixture({settings:{staff_roster:{weekly:{A:Array(7).fill('Off')},overrides:{'2026-11-04':{A:{status:'Siaga',start:'22:00',end:'06:00',note:'Live malam'}}}}}});
   const row=roster.statusAt(accounts[0],'2026-11-04');
