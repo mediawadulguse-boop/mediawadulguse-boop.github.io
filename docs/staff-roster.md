@@ -12,7 +12,7 @@ Fitur tersedia mulai versi 1.32.0. Sejak v1.33.0 buka **Kalender → On / Siaga 
 
 Tab jadwal mengikuti izin `settings.view`, dan perubahan memerlukan `settings.edit`. Perubahan status staf juga memerlukan `account.manage_permissions`. Kalender Brief / Tugas dan kalender publik tetap menggunakan izin yang sudah ada. Akun staf biasa tidak menerima isi pengaturan sistem.
 
-Pilihan petugas oleh pengelola menggunakan akun aktif. Petugas resign yang sudah tercatat pada brief atau tugas tetap tersedia ketika penugasan lama diedit. Filter riwayat tetap mencakup nama staf lama.
+Sejak v1.34.0, semua pilihan petugas dan filter hanya menawarkan akun aktif. Staf resign pada penugasan lama ditampilkan sebagai keterangan riwayat di luar pilihan. Mengedit tanpa memilih pengganti mempertahankan ID dan nama petugas sebelumnya.
 
 Status kepegawaian adalah informasi administrasi. Pencabutan akses login dan sesi tidak termasuk perubahan ini.
 
@@ -20,7 +20,9 @@ Status kepegawaian adalah informasi administrasi. Pencabutan akses login dan ses
 
 Pola mingguan, pengecualian tanggal, dan status staf disimpan sebagai objek `staff_roster` pada `SYSTEM_SETTINGS`, melalui aksi `getSystemSettings` / `saveSystemSettings` yang sudah tersedia. Tidak diperlukan kolom baru pada `AKUN`. Kontrak penyimpanan telah diperiksa terhadap sumber Apps Script v1.31.5.
 
-Sebelum menyimpan, aplikasi membaca pengaturan terbaru, menerapkan perubahan, lalu membaca ulang hasilnya dan mencocokkan `write_id`. Kegagalan koneksi, izin, atau konfirmasi penyimpanan ditampilkan sebagai galat; antarmuka tidak melaporkan perubahan tersebut sebagai berhasil. Perubahan pola mingguan hanya menimpa hari yang diubah, dan konflik pada hari yang sama meminta pengguna memuat ulang.
+Sebelum menyimpan ke server, aplikasi membaca pengaturan terbaru, menerapkan perubahan, lalu membaca ulang hasilnya dan mencocokkan `write_id`. Perubahan Aktif/Resign langsung diterapkan di perangkat setelah antreannya tersimpan, dengan label menunggu sinkronisasi sampai server terverifikasi. Antrean diteruskan setelah reload atau jaringan kembali. Perubahan pola mingguan hanya menimpa hari yang diubah, dan konflik pada hari yang sama meminta pengguna memuat ulang.
+
+Pembaruan GS v1.34.0 diperlukan agar akun Analis/Staf menerima status administratif minimum tanpa akses ke pengaturan sistem. Lihat [petunjuk optimasi dan GS](optimization-v1.34.md).
 
 Rentang maksimal 366 hari per operasi. Ukuran JSON dibatasi 45.000 karakter sebelum dikirim agar sesuai kapasitas sel pengaturan. Gunakan pola mingguan untuk jadwal rutin dan pengecualian untuk perubahan khusus.
 

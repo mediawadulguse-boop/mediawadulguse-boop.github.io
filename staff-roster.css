@@ -3,3 +3,5 @@
 @media(max-width:370px){.roster-grid{grid-template-columns:1fr}.roster-staff-checks{grid-template-columns:1fr}}
 
 .roster-status.on{background:#dcfce7;color:#166534;border-color:#86efac}.roster-status.siaga{background:#fef9c3;color:#854d0e;border-color:#fde047}.roster-status.off{background:#fee2e2;color:#991b1b;border-color:#fca5a5}.roster-status.unset{background:#f1f5f9;color:#475569}[data-theme=dark] .roster-status.on{background:#123b2a;color:#bbf7d0;border-color:#166534}[data-theme=dark] .roster-status.siaga{background:#422f0b;color:#fef08a;border-color:#854d0e}[data-theme=dark] .roster-status.off{background:#451a1a;color:#fecaca;border-color:#991b1b}
+
+.team-person-history{grid-column:1/-1;color:var(--muted);font-size:11px;line-height:1.6}.btn[download]{text-decoration:none}

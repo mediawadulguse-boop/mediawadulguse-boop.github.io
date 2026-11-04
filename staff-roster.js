@@ -23,10 +23,51 @@ const StaffRoster = (() => {
     const v=object(typeof raw==='string'?Utils.parseJSON(raw,{}):raw);
     return {version:1,weekly:{...object(v.weekly)},overrides:{...object(v.overrides)},employment:{...object(v.employment)},updated_at:String(v.updated_at||''),write_id:String(v.write_id||'')};
   }
-  const config=()=>normalize(Store.systemSettings?.[KEY]);
+  const EMPLOYMENT_QUEUE='MWG_EMPLOYMENT_V134';
+  let employmentJobs=null,employmentTimer=0,employmentWorker=false,activeEmployment='';
+  const jobOwner=()=>Auth.session?String(Config.data.apiUrl||'demo')+'|'+String(Auth.session.user?.id||Auth.session.user?.username||''):'';
+  function jobs(){
+    if(employmentJobs)return employmentJobs;
+    try{const saved=JSON.parse(localStorage.getItem(EMPLOYMENT_QUEUE)||'[]');employmentJobs=Array.isArray(saved)?saved.filter(x=>x&&x.id&&x.owner&&x.account_id&&['Aktif','Resign'].includes(x.status)):[]}catch{employmentJobs=[]}
+    return employmentJobs;
+  }
+  function saveJobs(next){
+    // A pending status must survive reload before it is shown in the directory.
+    localStorage.setItem(EMPLOYMENT_QUEUE,JSON.stringify(next));employmentJobs=next;
+  }
+  function config(){const cfg=normalize(Store.systemSettings?.[KEY]);for(const job of jobs())if(job.owner===jobOwner())cfg.employment[String(job.account_id)]={status:job.status,resigned_at:job.resigned_at};return cfg}
+  const employmentPending=id=>jobs().some(j=>j.owner===jobOwner()&&String(j.account_id)===String(id));
+  function scheduleEmployment(delay=0){clearTimeout(employmentTimer);employmentTimer=setTimeout(()=>{employmentTimer=0;flushEmployment()},delay)}
+  async function flushEmployment(){
+    if(employmentWorker||!Auth.session||!navigator.onLine||!canManage()||!Auth.has('account.manage_permissions'))return;
+    const job=jobs().find(j=>j.owner===jobOwner());if(!job)return;
+    if(busy){scheduleEmployment(500);return}
+    const who=jobOwner();employmentWorker=true;activeEmployment=job.id;
+    try{
+      await setEmployment(job.account_id,job.status,job.resigned_at);
+      saveJobs(jobs().filter(x=>x.id!==job.id));
+      if(jobOwner()===who)window.dispatchEvent(new CustomEvent('mwg:staff-roster'));
+    }catch(e){
+      const retry=!navigator.onLine||/timeout|koneksi|network|fetch|sesi|login|terverifikasi|sibuk|sebelumnya|dicoba ulang/i.test(String(e.message));
+      if(retry){job.error=String(e.message);job.attempts=(job.attempts||0)+1;try{saveJobs(jobs())}catch{};scheduleEmployment(Math.min(30000,1500*Math.max(1,job.attempts)))}
+      else{try{saveJobs(jobs().filter(x=>x.id!==job.id))}catch{};if(jobOwner()===who){window.dispatchEvent(new CustomEvent('mwg:staff-roster'));Utils.toast?.('Status staf belum tersimpan: '+e.message,'error')}}
+    }finally{employmentWorker=false;activeEmployment='';if(!employmentTimer&&jobs().some(j=>j.owner===jobOwner()))scheduleEmployment(100)}
+  }
+  function queueEmployment(id,status,resigned_at=''){
+    if(!canManage()||!Auth.has('account.manage_permissions'))throw new Error('Anda tidak memiliki akses mengubah status staf.');
+    if(!['Aktif','Resign'].includes(status)||!Store.accounts.some(a=>String(a.id)===String(id)))throw new Error('Akun atau status staf tidak valid.');
+    if(status==='Resign'&&!validDate(resigned_at))throw new Error('Tanggal resign wajib diisi.');
+    const owner=jobOwner();if(!owner)throw new Error('Silakan masuk kembali.');
+    const next=jobs().filter(j=>j.id===activeEmployment||j.owner!==owner||String(j.account_id)!==String(id));
+    if(next.length>=100)throw new Error('Antrean status staf penuh. Tunggu sinkronisasi.');
+    const job={id:Utils.id('EMP'),owner,account_id:String(id),status,resigned_at:status==='Resign'?resigned_at:'',created_at:Date.now()};
+    try{saveJobs([...next,job])}catch{throw new Error('Antrean status staf tidak dapat disimpan. Periksa ruang penyimpanan browser.')}
+    window.dispatchEvent(new CustomEvent('mwg:staff-roster'));scheduleEmployment();return {queued:true,id:job.id};
+  }
   function employmentStatus(account,cfg=config()){
     const rec=object(cfg.employment[String(account?.id||'')]);
-    const status=String(rec.status||account?.status_staf||account?.status_kepegawaian||'Aktif').trim().toLowerCase();
+    const newer=!employmentPending(account?.id)&&account?.status_staf_updated_at&&String(account.status_staf_updated_at)>String(cfg.updated_at||'');
+    const status=String(newer?account.status_staf:(rec.status||account?.status_staf||account?.status_kepegawaian||'Aktif')).trim().toLowerCase();
     return status==='resign'?'Resign':'Aktif';
   }
   function resignedAt(account,cfg=config()){
@@ -64,11 +105,23 @@ const StaffRoster = (() => {
       try{
         const [,out]=await Promise.all([ReferenceManager.ensure({force}),API.call('getSystemSettings',{}, {skipQueue:true})]);
         if(identity()!==who)throw new Error('Sesi berubah. Buka kembali jadwal staf.');
-        loadedFor=who;lastLoaded=Date.now();publish(out?.[KEY]);return config();
+        Store.systemSettings={...(Store.systemSettings||{}),...(out||{})};loadedFor=who;lastLoaded=Date.now();publish(out?.[KEY]);return config();
       }catch(e){if(identity()===who)error=String(e.message||e);throw e}
       finally{if(loading?.who===who)loading=null}
     })();
     loading={who,promise:work};return work;
+  }
+  function hasSnapshot(){return ready()||own(Store.systemSettings,KEY)}
+  function pruneOptions(root=document){
+    const retired=(Store.accounts||[]).filter(a=>!isActive(a)),ids=new Set(retired.map(a=>String(a.id))),names=new Set(retired.map(a=>String(a.nama||'').trim().toLowerCase()));
+    root.querySelectorAll('select.team-person,select[name="petugas_id"],#briefPic,#taskPic,#kanbanPic,#rosterStaffFilter,#hotPicList').forEach(select=>{
+      const chosen=select.value,isAssignment=select.matches('select.team-person,select[name="petugas_id"]');let removed=false;
+      [...select.querySelectorAll('option')].forEach(option=>{if(ids.has(String(option.value))||names.has(String(option.value).trim().toLowerCase())){if(option.value===chosen)removed=true;option.remove()}});
+      if(!removed||select.tagName==='DATALIST')return;
+      if(!select.querySelector('option[value=""]')){const blank=document.createElement('option');blank.value='';blank.textContent=isAssignment?'Pilih petugas aktif':'Semua petugas';select.prepend(blank)}
+      select.value='';
+      if(isAssignment&&select.dataset.originalPersonId===chosen){select.dataset.retainedPersonId=chosen;select.dataset.retainedPersonName=select.dataset.originalPersonName||'';select.required=false;select.querySelector('option[value=""]').textContent='Pertahankan penugasan sebelumnya'}
+    });
   }
   async function update(mutator){
     if(!canManage())throw new Error('Anda tidak memiliki akses mengubah pengaturan staf.');
@@ -141,14 +194,14 @@ const StaffRoster = (() => {
       root.innerHTML=`<div class="empty" role="status">${error?`<strong>Jadwal staf belum dapat dimuat.</strong><p>${esc(error)}</p><button class="btn" data-roster-retry>Coba Lagi</button>`:'<div class="skeleton" style="height:100px"></div><p>Memuat jadwal dan status staf…</p>'}</div>`;
       root.querySelector('[data-roster-retry]')?.addEventListener('click',()=>loadView(true));return;
     }
-    const cfg=config(),all=accounts(),rows=all.filter(a=>!staffFilter||String(a.id)===staffFilter);
+    const cfg=config(),all=accounts(),active=all.filter(isActive);if(staffFilter&&!active.some(a=>String(a.id)===staffFilter))staffFilter='';const rows=all.filter(a=>!staffFilter||String(a.id)===staffFilter);
     const days=range(viewCursor),current=Utils.today(),todayRows=rows.filter(a=>activeOn(a,current,cfg)).map(a=>({a,s:statusAt(a,current,cfg)}));
     const count=status=>todayRows.filter(x=>x.s.status===status).length;
     const cells=days.map(d=>{
       const eligible=rows.filter(a=>activeOn(a,d.key,cfg)).map(a=>({a,s:statusAt(a,d.key,cfg)})),groups=['On','Siaga','Off',''].filter(s=>!statusFilter||s===statusFilter);
       return `<button type="button" class="roster-day ${d.outside?'outside':''} ${d.key===current?'today':''}" data-roster-day="${d.key}" aria-label="Jadwal staf ${d.key}"><span class="roster-date"><span>${d.day}</span><small>${esc(new Date(d.key+'T12:00:00Z').toLocaleDateString('id-ID',{weekday:'short',timeZone:'UTC'}))}</small></span>${groups.map(status=>{const list=eligible.filter(x=>x.s.status===status);if(!list.length)return '';return `<span class="roster-group ${statusClass(status)}"><strong>${status||'Belum diatur'} <b>${list.length}</b></strong><span>${list.slice(0,3).map(x=>esc(x.a.nama)).join(', ')}${list.length>3?` +${list.length-3}`:''}</span></span>`}).join('')||'<span class="roster-no-staff">Tidak ada staf pada filter ini</span>'}</button>`;
     }).join('');
-    root.innerHTML=`<div class="roster-toolbar"><div><strong>Jadwal Staf</strong><p>Pola mingguan dapat diganti khusus untuk tanggal tertentu.</p></div><div class="roster-filters"><label>Staf<select class="select" id="rosterStaffFilter"><option value="">Semua staf</option>${all.map(a=>`<option value="${esc(a.id)}" ${String(a.id)===staffFilter?'selected':''}>${esc(a.nama)}${isActive(a)?'':' • Resign'}</option>`).join('')}</select></label><label>Status<select class="select" id="rosterStatusFilter"><option value="">Semua status</option><option ${statusFilter==='On'?'selected':''}>On</option><option ${statusFilter==='Siaga'?'selected':''}>Siaga</option><option ${statusFilter==='Off'?'selected':''}>Off</option></select></label></div></div><div class="roster-summary" aria-label="Ringkasan hari ini"><span class="roster-status on"><b>${count('On')}</b> On hari ini</span><span class="roster-status siaga"><b>${count('Siaga')}</b> Siaga hari ini</span><span class="roster-status off"><b>${count('Off')}</b> Off hari ini</span><span><b>${count('')}</b> Belum diatur</span></div>${error?`<div class="roster-warning" role="alert">${esc(error)}</div>`:''}${!all.length?'<div class="empty">Belum ada akun staf. Tambahkan staf melalui menu Akun.</div>':`<div class="calendar-week roster-week">${['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(d=>`<div>${d}</div>`).join('')}</div><div class="roster-grid">${cells}</div>`}<div class="roster-help">Klik tanggal untuk melihat seluruh staf, jam kerja / siaga, dan catatan.${canManage()?' Gunakan Pola Mingguan untuk jadwal rutin atau Atur Tanggal untuk perubahan khusus.':''}</div>`;
+    root.innerHTML=`<div class="roster-toolbar"><div><strong>Jadwal Staf</strong><p>Pola mingguan dapat diganti khusus untuk tanggal tertentu.</p></div><div class="roster-filters"><label>Staf<select class="select" id="rosterStaffFilter"><option value="">Semua staf</option>${active.map(a=>`<option value="${esc(a.id)}" ${String(a.id)===staffFilter?'selected':''}>${esc(a.nama)}${isActive(a)?'':' • Resign'}</option>`).join('')}</select></label><label>Status<select class="select" id="rosterStatusFilter"><option value="">Semua status</option><option ${statusFilter==='On'?'selected':''}>On</option><option ${statusFilter==='Siaga'?'selected':''}>Siaga</option><option ${statusFilter==='Off'?'selected':''}>Off</option></select></label></div></div><div class="roster-summary" aria-label="Ringkasan hari ini"><span class="roster-status on"><b>${count('On')}</b> On hari ini</span><span class="roster-status siaga"><b>${count('Siaga')}</b> Siaga hari ini</span><span class="roster-status off"><b>${count('Off')}</b> Off hari ini</span><span><b>${count('')}</b> Belum diatur</span></div>${error?`<div class="roster-warning" role="alert">${esc(error)}</div>`:''}${!all.length?'<div class="empty">Belum ada akun staf. Tambahkan staf melalui menu Akun.</div>':`<div class="calendar-week roster-week">${['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(d=>`<div>${d}</div>`).join('')}</div><div class="roster-grid">${cells}</div>`}<div class="roster-help">Klik tanggal untuk melihat seluruh staf, jam kerja / siaga, dan catatan.${canManage()?' Gunakan Pola Mingguan untuk jadwal rutin atau Atur Tanggal untuk perubahan khusus.':''}</div>`;
     root.querySelector('#rosterStaffFilter').onchange=e=>{staffFilter=e.target.value;render()};
     root.querySelector('#rosterStatusFilter').onchange=e=>{statusFilter=e.target.value;render()};
     root.querySelectorAll('[data-roster-day]').forEach(b=>b.onclick=()=>openDay(b.dataset.rosterDay));
@@ -191,14 +244,15 @@ const StaffRoster = (() => {
   }
   async function openOverride(date,id=''){
     if(!await formReady())return;
-    const rows=accounts().filter(a=>activeOn(a,date)),current=id?statusAt(Store.accountById(id)||{id},date):null;
+    const rows=accounts().filter(a=>isActive(a)&&activeOn(a,date)),current=id?statusAt(Store.accountById(id)||{id},date):null;
     Utils.modal('Atur On / Siaga / Off',`<form id="rosterOverrideForm"><div class="form-grid"><div class="form-group"><label>Dari Tanggal</label><input class="input" type="date" name="from" required value="${esc(date)}"></div><div class="form-group"><label>Sampai Tanggal</label><input class="input" type="date" name="to" required value="${esc(date)}"></div><div class="form-group full"><label>Staf</label><label class="roster-select-all"><input type="checkbox" id="rosterSelectAll"> Pilih semua staf dalam daftar</label><div class="roster-staff-checks">${rows.map(a=>`<label class="check"><input type="checkbox" name="staff" value="${esc(a.id)}" ${String(a.id)===id||(!id&&String(a.id)===staffFilter)?'checked':''}>${esc(a.nama)}</label>`).join('')||'<span>Belum ada staf pada tanggal ini.</span>'}</div></div><div class="form-group full"><label>Status</label><select class="select" name="status" id="rosterOverrideStatus"><option value="On" ${current?.status==='On'?'selected':''}>On</option><option value="Siaga" ${current?.status==='Siaga'||!current?.status?'selected':''}>Siaga</option><option value="Off" ${current?.status==='Off'?'selected':''}>Off</option><option value="default">Ikuti Pola Mingguan (hapus perubahan khusus)</option></select></div><div class="form-group"><label>Jam Mulai (opsional, WIB)</label><input class="input" type="time" name="start" value="${esc(current?.start||'')}"></div><div class="form-group"><label>Jam Selesai (opsional, WIB)</label><input class="input" type="time" name="end" value="${esc(current?.end||'')}"></div><div class="form-group full"><label>Catatan (opsional)</label><input class="input" name="note" maxlength="160" placeholder="Misalnya: siaga live / libur pengganti" value="${esc(current?.note||'')}"><div class="file-note">Jam selesai yang lebih awal berarti berakhir pada hari berikutnya. Maksimal 366 hari per penyimpanan.</div></div></div><p id="rosterFormError" class="roster-warning" role="alert" hidden></p></form>`,`<button class="btn" data-close-modal>Batal</button><button class="btn btn-primary" id="saveRosterOverride">Simpan Jadwal</button>`,'wide');
     const form=Utils.q('#rosterOverrideForm'),status=form.elements.status;
     const sync=()=>{form.elements.start.disabled=!['On','Siaga'].includes(status.value);form.elements.end.disabled=!['On','Siaga'].includes(status.value);form.elements.note.disabled=status.value==='default'};
     status.onchange=sync;sync();Utils.q('#rosterSelectAll').onchange=e=>Utils.qa('input[name="staff"]',form).forEach(c=>c.checked=e.target.checked);
     Utils.q('#saveRosterOverride').onclick=()=>{if(!form.reportValidity())return;const d=Utils.formData(form);d.ids=Utils.qa('input[name="staff"]:checked',form).map(c=>c.value);d.start=d.start||'';d.end=d.end||'';d.note=d.note||'';submit(Utils.q('#saveRosterOverride'),()=>setOverrides(d))};
   }
-  window.addEventListener('mwg:references-ready',()=>{if(Utils.q('#rosterView')&&ready())render()});
-  window.addEventListener('mwg:staff-roster',()=>{if(Utils.q('#rosterView'))render()});
-  return {ensure,ready,employmentStatus,resignedAt,isActive,activeOn,statusAt,dateKeys,canView,canManage,setEmployment,saveWeekly,setOverrides,headerActions,render,loadView};
+  window.addEventListener('mwg:references-ready',()=>{pruneOptions();scheduleEmployment();if(Utils.q('#rosterView')&&ready())render()});
+  window.addEventListener('mwg:staff-roster',()=>{pruneOptions();if(Utils.q('#rosterView'))render()});
+  window.addEventListener('online',()=>scheduleEmployment());
+  return {ensure,ready,hasSnapshot,pruneOptions,employmentPending,queueEmployment,flushEmployment,employmentStatus,resignedAt,isActive,activeOn,statusAt,dateKeys,canView,canManage,setEmployment,saveWeekly,setOverrides,headerActions,render,loadView};
 })();

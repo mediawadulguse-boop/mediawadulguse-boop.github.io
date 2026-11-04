@@ -6,15 +6,16 @@ const vm=require('node:vm');
 const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'..','staff-roster.js'),'utf8');
 const clone=v=>JSON.parse(JSON.stringify(v));
-function fixture({settings={},permissions=['*'],confirm=true}={}){
+function fixture({settings={},permissions=['*'],confirm=true,storage=new Map()}={}){
   let stored=clone(settings),writes=0,sequence=0;
   const events=[];
   const accounts=[{id:'A',nama:'Staf A'},{id:'B',nama:'Staf B'}];
   const context={
     Store:{accounts,systemSettings:clone(settings),persistCache:()=>Promise.resolve()},
-    Auth:{session:{token:'test-session'},has:p=>permissions.includes('*')||permissions.includes(p)},
+    Auth:{session:{token:'test-session',user:{id:'ADMIN'}},has:p=>permissions.includes('*')||permissions.includes(p)},
     Config:{data:{apiUrl:'test-endpoint'}},ReferenceManager:{ensure:async()=>true},
     navigator:{onLine:true},
+    setTimeout:()=>1,clearTimeout:()=>{},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
     Utils:{parseJSON:(s,f)=>{try{return JSON.parse(s)}catch{return f}},isoNow:()=>new Date().toISOString(),id:()=>`WRITE-${++sequence}`,q:()=>null},
     window:{addEventListener:()=>{},dispatchEvent:e=>events.push(e.type)},CustomEvent:class{constructor(type){this.type=type}},
     API:{call:async(action,payload)=>{
@@ -24,7 +25,7 @@ function fixture({settings={},permissions=['*'],confirm=true}={}){
     }}
   };
   const roster=vm.runInNewContext(source+'\nStaffRoster;',context);
-  return {roster,context,accounts,get stored(){return stored},get writes(){return writes},events};
+  return {roster,context,accounts,storage,get stored(){return stored},get writes(){return writes},events};
 }
 test('legacy accounts default to active and unconfigured, never invent a shift',()=>{
   const {roster,accounts}=fixture();
@@ -128,4 +129,31 @@ test('a roster above the sheet cell limit is rejected before sending',async()=>{
 test('staff without settings access cannot request the shared settings payload',async()=>{
   const f=fixture({permissions:['calendar.view']});
   assert.equal(f.roster.canView(),false);await assert.rejects(f.roster.ensure(),/pengelola/);assert.equal(f.roster.ready(),false);
+});
+test('resignation is visible immediately only after a durable status job is stored',async()=>{
+  const f=fixture();f.roster.queueEmployment('A','Resign','2026-11-04');
+  assert.equal(f.roster.isActive(f.accounts[0]),false);assert.equal(f.roster.employmentPending('A'),true);assert.equal(f.writes,0);
+  assert.equal(JSON.parse(f.storage.get('MWG_EMPLOYMENT_V134'))[0].account_id,'A');
+  await f.roster.flushEmployment();assert.equal(f.writes,1);assert.equal(f.roster.employmentPending('A'),false);assert.equal(f.stored.staff_roster.employment.A.status,'Resign');
+});
+test('status outbox survives reload and resumes with the same account intent',async()=>{
+  const f=fixture();f.roster.queueEmployment('A','Resign','2026-11-04');
+  const other=fixture({storage:f.storage});assert.equal(other.roster.isActive(other.accounts[0]),false);
+  await other.roster.flushEmployment();assert.equal(other.roster.employmentPending('A'),false);assert.equal(other.writes,1);
+});
+test('storage failure never publishes an unpersisted resignation',()=>{
+  const f=fixture();f.context.localStorage.setItem=()=>{throw new Error('quota')};
+  assert.throws(()=>f.roster.queueEmployment('A','Resign','2026-11-04'),/tidak dapat disimpan/);assert.equal(f.roster.isActive(f.accounts[0]),true);assert.equal(f.roster.employmentPending('A'),false);
+});
+test('unconfirmed server result stays pending for a safe retry',async()=>{
+  const f=fixture({confirm:false});f.roster.queueEmployment('A','Resign','2026-11-04');await f.roster.flushEmployment();
+  assert.equal(f.roster.employmentPending('A'),true);assert.equal(f.stored.staff_roster,undefined);
+});
+test('queued employment is private to the signed-in user and endpoint',()=>{
+  const f=fixture();f.roster.queueEmployment('A','Resign','2026-11-04');f.context.Auth.session.user.id='OTHER';
+  assert.equal(f.roster.employmentPending('A'),false);assert.equal(f.roster.isActive(f.accounts[0]),true);
+});
+test('new server-projected status overrides an older settings snapshot',()=>{
+  const f=fixture({settings:{staff_roster:{updated_at:'2026-11-01T00:00:00Z',employment:{A:{status:'Aktif'}}}}});
+  assert.equal(f.roster.employmentStatus({...f.accounts[0],status_staf:'Resign',status_staf_updated_at:'2026-11-04T00:00:00Z'}),'Resign');
 });

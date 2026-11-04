@@ -1,0 +1,11 @@
+{
+  "name": "media-wadul-guse",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "test:integration": "node tests/optimization.integration.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}
