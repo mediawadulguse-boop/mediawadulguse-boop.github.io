@@ -12,7 +12,9 @@ Unduh [Template_Impor_Brief.xlsx](../templates/Template_Impor_Brief.xlsx).
 - Batas: 100 brief / 8 MB per impor. Format `.xlsx`, `.xls`, dan `.csv`.
 - Tanggal menerima sel tanggal Excel, `DD/MM/YYYY`, atau `YYYY-MM-DD`; kalender 1904 juga didukung.
 - `deadline` kosong mengikuti tanggal tayang. Target kosong mengikuti pengaturan kategori aplikasi; nilai `0` tetap nol.
-- Semua brief baru berstatus **Draft**, dengan approval **Draft**.
+- Kolom `status` memakai **Draft / Planning / Produksi / Review / Publish / Insight**. Jika kosong, status memakai **Draft**. Approval awal tetap **Draft**.
+- Kolom `kategori_konten` menyediakan dropdown **Video / Carousel / Single Post / Live**.
+- Kolom `link_konten` menerima satu URL publikasi http/https. Wajib untuk status **Publish**, opsional untuk status lain. Link ikut disinkronkan ke relasi publikasi brief.
 - `petugas` menerima nama lengkap, username, atau ID akun aktif. Pisahkan beberapa petugas dengan `;`.
 - `jobdesk` menerima beberapa jobdesk per petugas, dipisahkan koma. Antarpetugas dipisahkan `;`, sesuai urutan kolom petugas.
 - Contoh: petugas `Fathurrohman; Fahmi Ilham Pahwana`, jobdesk `Desainer; Videografer, Editor`.
@@ -53,6 +55,12 @@ tetap tersedia.
 
 ```sh
 node --test tests/brief-import.test.cjs tests/staff-roster.test.cjs
+```
+
+Untuk memeriksa template XLSX dan penyimpanan status/kategori pada integrasi DOM, pasang dependensi pengujian (`npm install`) lalu gunakan bundle browser SheetJS 0.20.3 yang sama dengan importer:
+
+```sh
+MWG_XLSX_BROWSER=/path/to/xlsx.full.min.js node tests/template-status.integration.cjs
 ```
 
 Pengujian integrasi lokal juga mencakup input campuran, penugasan otomatis,

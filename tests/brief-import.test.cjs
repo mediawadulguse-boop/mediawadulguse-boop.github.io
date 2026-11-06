@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 function fixture(){
- const context={Date,console,window:{addEventListener(){}},Config:{pillars:['Tindak Lanjut',"Kasih Tau Gus'e"],categories:['Video','Carousel','Single Post','Live'],jobs:['Desainer','Videografer','Editor'],audiences:['Masyarakat umum','Anak muda'],resolvePillar:s=>s},Store:{accounts:[{id:'A',nama:'Fathurrohman',username:'fathur'},{id:'B',nama:'Fahmi Ilham Pahwana',username:'fahmi'},{id:'R',nama:'Staf Resign',resigned:true}],briefs:[]},StaffRoster:{isActive:a=>!a.resigned},InsightTracker:{defaultTargetsForBrief:()=>({realistis:100,optimis:200,ambisius:300})}};
+ const context={Date,URL,console,window:{addEventListener(){}},Config:{briefStatuses:['Draft','Planning','Produksi','Review','Publish','Insight'],pillars:['Tindak Lanjut',"Kasih Tau Gus'e"],categories:['Video','Carousel','Single Post','Live'],jobs:['Desainer','Videografer','Editor'],audiences:['Masyarakat umum','Anak muda'],resolvePillar:s=>s},Store:{accounts:[{id:'A',nama:'Fathurrohman',username:'fathur'},{id:'B',nama:'Fahmi Ilham Pahwana',username:'fahmi'},{id:'R',nama:'Staf Resign',resigned:true}],briefs:[]},StaffRoster:{isActive:a=>!a.resigned},InsightTracker:{detectPlatform:()=>'Website',defaultTargetsForBrief:()=>({realistis:100,optimis:200,ambisius:300})}};
  const importer=vm.runInNewContext(fs.readFileSync(path.join(__dirname,'..','brief-import.js'),'utf8')+'\nBriefImport;',context);return {importer,context};
 }
 const row=raw=>({row:2,raw:{tanggal:'04/11/2026',judul:'Brief Contoh',detail_brief:'Arahan produksi',...raw}});
@@ -19,3 +19,15 @@ test('inconsistent jobs, unrecognized vocabulary, invalid targets and required f
 test('duplicate detection includes normalized titles, archived records and repeated input',()=>{const {importer:i,context:c}=fixture();c.Store.briefs=[{id:'old',tanggal:'2026-11-04',judul:'BRIEF   CONTOH',archived:true}];const items=i.prepareRows([row({}),row({judul:'New'}),{...row({judul:' New '}),row:4}]);assert.equal(items[0].duplicate,true);assert.equal(items[1].duplicate,false);assert.equal(items[2].duplicate,true)});
 test('retry IDs stay stable across file names, whitespace, and case',()=>{const {importer:i}=fixture();assert.equal(i.normalizeRow(row({})).record.id,i.normalizeRow(row({judul:' BRIEF   CONTOH '})).record.id);assert.notEqual(i.normalizeRow(row({})).record.id,i.normalizeRow(row({tanggal:'2026-11-05'})).record.id)});
 test('new import is restricted to supported file formats and size',async()=>{const {importer:i}=fixture();await assert.rejects(i.parseFile({name:'a.xlsx',size:9*1024*1024}),/8 MB/);await assert.rejects(i.parseFile({name:'a.pdf',size:100}),/xlsx/)});
+test('status follows supported production values and blank legacy files still default to Draft',()=>{
+ const {importer:i}=fixture();for(const status of ['Draft','Planning','Produksi','Review','Insight']){const r=i.normalizeRow(row({status}));assert.equal(r.errors.length,0);assert.equal(r.record.status,status)}
+ assert.equal(i.normalizeRow(row({status:'  produksi  '})).record.status,'Produksi');assert.equal(i.normalizeRow(row({})).record.status,'Draft');assert.ok(i.normalizeRow(row({status:'Tidak dikenal'})).errors.some(x=>x.includes('status tidak dikenali')));
+});
+test('Publish requires a valid publication link and includes relation data',()=>{
+ const {importer:i}=fixture();assert.ok(i.normalizeRow(row({status:'Publish'})).errors.some(x=>x.includes('wajib')));
+ const r=i.normalizeRow(row({status:'Publish',link_konten:'https://www.instagram.com/p/contoh/'}));assert.equal(r.errors.length,0);assert.equal(r.record.status,'Publish');assert.equal(r.record._publication_links[0].url,r.record.link_konten);assert.equal(r.record.approval_status,'Draft');
+ for(const link of ['not-a-url','javascript:alert(1)','file:///tmp/file'])assert.ok(i.normalizeRow(row({status:'Publish',link_konten:link})).errors.length);
+});
+test('status and category headers accept readable labels from the template',()=>{
+ const {importer:i}=fixture(),records=i.tableRows([['tanggal','judul','detail_brief','Kategori Konten','Status Produksi'],['2026-11-06','A','B','carousel','review']]);const r=i.prepareRows(records)[0];assert.equal(r.errors.length,0);assert.equal(r.record.kategori_konten,'Carousel');assert.equal(r.record.status,'Review');
+});
