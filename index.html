@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- MEDIA WADUL GUS'E | Version 1.35.0 | Build 2026-11-06.2 | PDF Hot Issue import -->
+<!-- MEDIA WADUL GUS'E | Version 1.36.0 | Build 2026-11-07.1 | Long text editor -->
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
@@ -55,7 +55,8 @@
     (()=>{try{const mode=localStorage.getItem('mwg_theme_mode')||'system',accent=localStorage.getItem('mwg_theme_accent')||'#db2777';const dark=mode==='dark'||(mode==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches),resolved=dark?'dark':'light';document.documentElement.dataset.theme=resolved;document.documentElement.dataset.themeMode=mode;document.documentElement.dataset.accentTheme='custom';document.documentElement.style.colorScheme=resolved;if(/^#[0-9a-f]{6}$/i.test(accent))document.documentElement.style.setProperty('--primary',accent);}catch(_){document.documentElement.dataset.theme='light';document.documentElement.style.colorScheme='light';}})();
   </script>
   <link rel="stylesheet" href="./app.css?v=1.34.0">
-  <link rel="preload" as="script" href="./app.js?v=1.35.0">
+  <link rel="stylesheet" href="./long-text-editor.css?v=1.36.0">
+  <link rel="preload" as="script" href="./app.js?v=1.36.0">
 </head>
 <body>
 <div id="app"><div id="mwgBootPlaceholder" style="min-height:100vh;display:grid;place-items:center;background:#f4f7fb;font-family:Inter,system-ui,sans-serif;color:#4a1028"><div style="text-align:center;padding:24px"><div style="width:42px;height:42px;border:4px solid #fbcfe8;border-top-color:#db2777;border-radius:50%;margin:0 auto 14px;animation:mwgBootSpin .8s linear infinite"></div><strong style="font-size:15px">Membuka MEDIA WADUL GUS'E…</strong><div style="font-size:11px;color:#64748b;margin-top:6px">Menyiapkan aplikasi</div></div></div><style>@keyframes mwgBootSpin{to{transform:rotate(360deg)}}</style></div>
@@ -65,6 +66,7 @@
 <script src="./staff-roster.js?v=1.34.0"></script>
 <script src="./brief-import.js?v=1.34.1"></script>
 <script src="./hot-pdf-import.js?v=1.35.0"></script>
-<script src="./app.js?v=1.35.0"></script>
+<script src="./long-text-editor.js?v=1.36.0"></script>
+<script src="./app.js?v=1.36.0"></script>
 </body>
 </html>
