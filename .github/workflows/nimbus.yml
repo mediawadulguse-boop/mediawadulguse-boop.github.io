@@ -1,0 +1,55 @@
+name: Nimbus Go
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nimbus-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            nimbus-server/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm ci --prefix nimbus-server --ignore-scripts
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run test:nimbus
+      - run: npm run build:nimbus
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mwg-nimbus-${{ github.sha }}
+          path: dist/nimbus/
+          include-hidden-files: true
+          retention-days: 7
+  deploy:
+    needs: test
+    if: vars.NIMBUS_DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: nimbus-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run build:nimbus
+      - run: node scripts/deploy-nimbus.cjs
+        env:
+          NIMBUS_SSH_HOST: ${{ secrets.NIMBUS_SSH_HOST }}
+          NIMBUS_SSH_USER: ${{ secrets.NIMBUS_SSH_USER }}
+          NIMBUS_SSH_PORT: ${{ secrets.NIMBUS_SSH_PORT }}
+          NIMBUS_SSH_PRIVATE_KEY: ${{ secrets.NIMBUS_SSH_PRIVATE_KEY }}
+          NIMBUS_SSH_KNOWN_HOSTS: ${{ secrets.NIMBUS_SSH_KNOWN_HOSTS }}
+          NIMBUS_APP_ROOT: ${{ vars.NIMBUS_APP_ROOT }}
+          NIMBUS_NODE_BIN: ${{ vars.NIMBUS_NODE_BIN }}

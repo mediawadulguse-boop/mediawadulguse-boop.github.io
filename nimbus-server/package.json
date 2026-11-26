@@ -1,0 +1,24 @@
+{
+  "name": "media-wadul-nimbus-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Core API dan PostgreSQL untuk Nimbus Go",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "migrate": "node scripts/admin.cjs migrate",
+    "bootstrap": "node scripts/admin.cjs bootstrap",
+    "import": "node scripts/admin.cjs import",
+    "export": "node scripts/admin.cjs export",
+    "worker": "node scripts/worker.cjs",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14"
+  }
+}
